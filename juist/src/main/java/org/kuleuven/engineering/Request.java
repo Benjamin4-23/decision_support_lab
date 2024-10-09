@@ -11,5 +11,29 @@ public class Request {
         this.box = box;
     }
 
+    public Stack getPickupLocation() {
+        return pickupLocation;
+    }
+
+    public Stack getPlaceLocation() {
+        return placeLocation;
+    }
+
+    public Box getBox() {   
+        return box;
+    }
+
+    public void setPickupLocation(Stack pickupLocation) {
+        this.pickupLocation = pickupLocation;
+    }
+
+    public void setPlaceLocation(Stack placeLocation) {
+        this.placeLocation = placeLocation;
+    }   
+
+    public void setBox(Box box) {
+        this.box = box;
+    }   
+
     // Getters and setters
 }

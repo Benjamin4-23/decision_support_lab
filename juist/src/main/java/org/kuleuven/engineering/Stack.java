@@ -15,5 +15,13 @@ public class Stack {
         this.boxes = new ArrayList<>();
     }
 
-    // Methods for adding, removing boxes, checking capacity, etc.
+    public boolean addBox(Box box) {
+        // Implement logic to add box
+    }
+
+    public Box removeBox() {
+        // Implement logic to remove box
+    }
+
+    // Getters and setters
 }

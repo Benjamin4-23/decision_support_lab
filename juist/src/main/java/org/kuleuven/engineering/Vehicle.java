@@ -17,5 +17,17 @@ public class Vehicle {
         this.carriedBoxes = new ArrayList<>();
     }
 
-    // Methods for moving, loading, unloading boxes, etc.
+    public void moveTo(double targetX, double targetY) {
+        // Implement movement logic
+    }
+
+    public boolean loadBox(Box box) {
+        // Implement loading logic
+    }
+
+    public boolean unloadBox(Box box) {
+        // Implement unloading logic
+    }
+
+    // Getters and setters
 }
