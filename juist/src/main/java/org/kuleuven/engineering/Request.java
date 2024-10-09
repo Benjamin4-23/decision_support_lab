@@ -1,21 +1,21 @@
 package org.kuleuven.engineering;
 
 public class Request {
-    private Stack pickupLocation;
-    private Stack placeLocation;
+    private Stack2 pickupLocation;
+    private Stack2 placeLocation;
     private Box box;
 
-    public Request(Stack pickupLocation, Stack placeLocation, Box box) {
+    public Request(Stack2 pickupLocation, Stack2 placeLocation, Box box) {
         this.pickupLocation = pickupLocation;
         this.placeLocation = placeLocation;
         this.box = box;
     }
 
-    public Stack getPickupLocation() {
+    public Stack2 getPickupLocation() {
         return pickupLocation;
     }
 
-    public Stack getPlaceLocation() {
+    public Stack2 getPlaceLocation() {
         return placeLocation;
     }
 
@@ -23,11 +23,11 @@ public class Request {
         return box;
     }
 
-    public void setPickupLocation(Stack pickupLocation) {
+    public void setPickupLocation(Stack2 pickupLocation) {
         this.pickupLocation = pickupLocation;
     }
 
-    public void setPlaceLocation(Stack placeLocation) {
+    public void setPlaceLocation(Stack2 placeLocation) {
         this.placeLocation = placeLocation;
     }   
 
