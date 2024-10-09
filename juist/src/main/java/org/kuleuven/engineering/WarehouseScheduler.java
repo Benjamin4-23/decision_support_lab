@@ -1,3 +1,4 @@
+package org.kuleuven.engineering;
 public class WarehouseScheduler {
     private Warehouse warehouse;
 

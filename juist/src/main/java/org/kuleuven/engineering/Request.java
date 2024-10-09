@@ -1,3 +1,5 @@
+package org.kuleuven.engineering;
+
 public class Request {
     private Stack pickupLocation;
     private Stack placeLocation;

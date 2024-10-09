@@ -1,3 +1,7 @@
+package org.kuleuven.engineering;
+import java.util.ArrayList;
+import java.util.List;
+
 public class Vehicle {
     private int id;
     private int capacity;
