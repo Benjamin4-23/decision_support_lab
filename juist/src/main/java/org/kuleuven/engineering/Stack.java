@@ -12,16 +12,25 @@ public class Stack {
         this.x = x;
         this.y = y;
         this.capacity = capacity;
-        this.boxes = new ArrayList<>();
+        this.boxes = new ArrayList<>(capacity);
     }
 
     public boolean addBox(Box box) {
-        // Implement logic to add box
+        return false;
     }
 
     public Box removeBox() {
-        // Implement logic to remove box
+        return new Box(0);
     }
 
-    // Getters and setters
+    public Box peek(){
+        return new Box(0);
+    }
+
+    public boolean isFull(){
+        return this.boxes.size() == this.capacity;
+    }
+
+
+
 }
