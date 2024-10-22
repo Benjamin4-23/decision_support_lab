@@ -1,27 +1,39 @@
 package org.kuleuven.engineering;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
 public class Request {
-    //ID int, pickupLocation str, placeLocation str, boxID str
-    private int ID;
-    private String pickupLocation;
-    private String placeLocation;
-    private String box;
+    private Stack2 pickupLocation;
+    private Stack2 placeLocation;
+    private Box box;
 
-    public Request(JsonObject object) {
-        pickupLocation = object.get("pickupLocation").getAsJsonArray().get(0).getAsString();
-        placeLocation = object.get("placeLocation").getAsJsonArray().get(0).getAsString();
-        ID = object.get("ID").getAsInt();
-        box = object.get("boxID").getAsString();
+    public Request(Stack2 pickupLocation, Stack2 placeLocation, Box box) {
+        this.pickupLocation = pickupLocation;
+        this.placeLocation = placeLocation;
+        this.box = box;
     }
 
-    public String getPickupLocation() {
+    public Stack2 getPickupLocation() {
         return pickupLocation;
     }
 
-    public String getPlaceLocation() {
+    public Stack2 getPlaceLocation() {
         return placeLocation;
     }
+
+    public Box getBox() {   
+        return box;
+    }
+
+    public void setPickupLocation(Stack2 pickupLocation) {
+        this.pickupLocation = pickupLocation;
+    }
+
+    public void setPlaceLocation(Stack2 placeLocation) {
+        this.placeLocation = placeLocation;
+    }   
+
+    public void setBox(Box box) {
+        this.box = box;
+    }   
+
+    // Getters and setters
 }

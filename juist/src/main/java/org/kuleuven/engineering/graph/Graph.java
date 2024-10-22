@@ -15,7 +15,7 @@ public class Graph {
         this.loadingSpeed = loadingSpeed;
     }
     private double calculateDistance(Location l1, Location l2){
-        return Math.sqrt(Math.pow(l2.getX() - l1.getX(), 2) + Math.pow(l2.getY() - l1.getY(), 2));
+        return Math.sqrt(Math.pow(l2.getX() - l1.getX(), 2) + Math.pow(l2.getY() - l1.getY(), 2)) * vehicleSpeed;
     }
     public void addNode(GraphNode node){
         if (!nodes.contains(node)) {
@@ -45,7 +45,7 @@ public class Graph {
         GraphNode closestNode = null;
         double minDistance = Double.POSITIVE_INFINITY;
         for (GraphNode node : nodes) {
-            double distance = calculateDistance(node.getLocation(), location) * vehicleSpeed;
+            double distance = calculateDistance(node.getLocation(), location);
             if (distance < minDistance) {
                 minDistance = distance;
                 closestNode = node;

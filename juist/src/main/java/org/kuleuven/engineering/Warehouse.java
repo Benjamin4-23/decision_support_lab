@@ -1,46 +1,37 @@
 package org.kuleuven.engineering;
-import org.kuleuven.engineering.graph.Graph;
-import org.kuleuven.engineering.graph.GraphNode;
-
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+
 public class Warehouse {
-    private Graph graph;
-    private List<Vehicle> vehicles;
-    private List<Request> requests;
-    private double drivenDistance = 0;
+    private final List<Stack2> stacks;
+    private final List<Vehicle> vehicles;
+    private final List<Request> requests;
+    private final HashMap<Integer, Box> boxMap; // HashMap to track all boxes
 
-    public Warehouse(Graph graph, List<Vehicle> vehicles, List<Request> requests) {
-        this.graph = graph;
+    public Warehouse(List<Stack2> stacks, List<Vehicle> vehicles) {
+        this.stacks = stacks;
         this.vehicles = vehicles;
-        this.requests = requests;
-        calculateStartingState();
+        this.requests = new ArrayList<>();
+        this.boxMap = new HashMap<>(); // Initialize the HashMap
     }
 
-    private void calculateStartingState(){
-        this.graph.calculateAllDistances();
-        // finc closest node to start from
-        for (Vehicle vehicle: vehicles) {
-            Graph.Pair<GraphNode, Double> pair = this.graph.getClosestNode(vehicle.getLocation());
-            GraphNode node = pair.x;
-            node.setVehiclePresent(true);
-            Double distance = pair.y;
-            drivenDistance += distance;
+    public void addBoxToStack(Box box, Stack2 stack) { //initial add
+        if (stack.addBox(box)) {
+            box.setCurrentLocation(stack);
+            boxMap.put(box.getId(), box);
         }
-    }
-    public void scheduleRequests() {
-        // Implement greedy scheduling algorithm
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(graph.toString());
-        sb.append("\n");
-        for (Vehicle vehicle: vehicles) {
-            Graph.Pair<GraphNode, Double> pair = this.graph.getClosestNode(vehicle.getLocation());
-            sb.append(String.format(vehicle.getName() + " " + vehicle.getLocation().toString() +" is closest to node "
-                    + pair.x.getName() + " " + pair.x.getLocation().toString() + " with distance: %.2f (no sqrt)\n", pair.y));
-        }
-        return sb.toString();
+    public void moveBox(Box box, Stack2 fromStack, Stack2 toStack) { // veronderstel tostack is vrij
+        fromStack.moveUnusedBoxes(stacks, box); // verplaats niet nodige boxen
+        addBoxToStack(box, toStack);
     }
+
+    public Stack2 findBoxLocation(int boxId) {
+        Box box = boxMap.get(boxId); // Retrieve the box from the HashMap
+        return (box != null) ? box.getCurrentLocation() : null; // Return the current location
+    }
+
+    // Additional methods for managing vehicles and requests
 }

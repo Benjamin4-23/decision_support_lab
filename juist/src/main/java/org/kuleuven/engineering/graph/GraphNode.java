@@ -7,7 +7,7 @@ import org.kuleuven.engineering.Location;
 public class GraphNode {
     private boolean isBuffer;
     private boolean isVehiclePresent;
-    IStorage storage;
+    IStorage Storage;
     private Location location;
 
     public GraphNode(IStorage storage, Location location){
@@ -17,7 +17,7 @@ public class GraphNode {
         isBuffer = storage instanceof Bufferpoint;
     }
     public String getName() {
-        return storage.getName();
+        return Storage.getName();
     }
     public boolean isBuffer() {
         return isBuffer;
