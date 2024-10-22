@@ -14,11 +14,7 @@ public class GraphNode {
         isVehiclePresent = false;
         this.location = location;
         this.Storage = storage;
-        if(storage instanceof Bufferpoint){
-            isBuffer = true;
-        } else {
-            isBuffer = false;
-        }
+        isBuffer = storage instanceof Bufferpoint;
     }
     public String getName() {
         return Storage.getName();
