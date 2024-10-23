@@ -10,6 +10,14 @@ public class GraphNode {
     IStorage storage;
     private final Location location;
 
+    public GraphNode(Location location) { // demo constructor voor vehicle object als node mee te geven
+        this.location = location;
+        this.isBuffer = false;
+        this.isVehiclePresent = false;
+        this.storage = null;
+        
+    }
+
     public GraphNode(IStorage storage, Location location){
         isVehiclePresent = false;
         this.location = location;

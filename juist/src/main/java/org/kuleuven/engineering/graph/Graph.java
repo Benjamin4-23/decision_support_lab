@@ -115,29 +115,22 @@ public class Graph {
         int index2 = nodes.indexOf(node2);
         return adjacencyMatrix[index1][index2];
     }
-    public double getDistanceLocation(Location start, Location end, boolean vehicle) {
-        if (vehicle) {
-            return calculateDistance(start, end);
-        } else {
-            int index1 = -1;
-            int index2 = -1;
-            for (int i = 0; i < nodes.size(); i++) {
-                GraphNode node = nodes.get(i);
-                if (node.getLocation().equals(start)) {
-                    index1 = i;
-                }
-                if (node.getLocation().equals(end)) {
-                    index2 = i;
-                }
-                if (index1 != -1 && index2 != -1) {
-                    break;
-                }
-            }
-            if (index1 == -1 || index2 == -1) {
-                throw new IllegalArgumentException("Start or end location not found in the graph.");
-            }
-            return adjacencyMatrix[index1][index2];
+
+
+    public double getDistanceLocation(GraphNode start, GraphNode end, boolean vehicle) {
+        List<GraphNode> atNodes = new ArrayList<>();
+        if (vehicle) { 
+            atNodes = this.nodes.stream().filter(x -> (x.getLocation().getX() == start.getLocation().getX() && x.getLocation().getY() == start.getLocation().getY())).toList();
+            if (atNodes.isEmpty()) return calculateDistance(start.getLocation(), end.getLocation());
+        } 
+        if (atNodes.size() > 1) System.out.println("vehicle at multiple places at the same time");
+
+        int index1 = vehicle ?  this.nodes.indexOf(atNodes.get(0)) : this.nodes.indexOf(start);
+        int index2 = this.nodes.indexOf(end);
+        if (index1 == -1 || index2 == -1) {
+            throw new IllegalArgumentException("Start or end location not found in the graph.");
         }
+        return adjacencyMatrix[index1][index2];
         
     }
 

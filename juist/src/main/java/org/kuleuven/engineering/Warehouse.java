@@ -7,6 +7,8 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 
+import javax.swing.GrayFilter;
+
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
 
@@ -75,7 +77,7 @@ public class Warehouse {
             int startY = vehicle.getLocation().getY();
             int startTime = currentTime;
 
-            currentTime += calculateTravelTime(vehicle.getLocation(), pickupNode.getLocation(), true); //staat vehicle bij node
+            currentTime += calculateTravelTime(new GraphNode(vehicle.getLocation()), pickupNode, true); //staat vehicle bij node
             vehicle.moveTo(pickupNode.getLocation().getX(), pickupNode.getLocation().getY());
             
             // Handle relocations if necessary
@@ -86,7 +88,7 @@ public class Warehouse {
                     // Find a temporary location for relocated boxes
                     GraphNode tempNode = findTemporaryLocation(relocatedBoxes.size());
                     if (tempNode != null) {
-                        currentTime += calculateTravelTime(pickupNode.getLocation(), tempNode.getLocation(), false);
+                        currentTime += calculateTravelTime(pickupNode, tempNode, false);
                         vehicle.moveTo(tempNode.getLocation().getX(), tempNode.getLocation().getY());
                         for (Box box : relocatedBoxes) {
                             if (tempNode.getStorage().addBox(box)) {
@@ -111,7 +113,7 @@ public class Warehouse {
             startTime = currentTime;
 
             vehicle.moveTo(placeNode.getLocation().getX(), placeNode.getLocation().getY());
-            currentTime += calculateTravelTime(pickupNode.getLocation(), placeNode.getLocation(), false);
+            currentTime += calculateTravelTime(pickupNode, placeNode, false);
 
             // Unload the box
             if (vehicle.unloadBox(box)) {
@@ -145,7 +147,7 @@ public class Warehouse {
         return null;
     }
 
-    private int calculateTravelTime(Location start, Location end, boolean vehicle) {
+    private int calculateTravelTime(GraphNode start, GraphNode end, boolean vehicle) {
         double distance = graph.getDistanceLocation(start, end, vehicle);
         return (int) (distance / graph.getVehicleSpeed());
     }
