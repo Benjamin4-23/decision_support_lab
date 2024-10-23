@@ -10,4 +10,11 @@
         <maven.compiler.target>21</maven.compiler.target>
         <exec.mainClass>org.kuleuven.engineering.Juist</exec.mainClass>
     </properties>
+    <dependecies>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+        </dependency>
+    </dependecies>
 </project>

@@ -1,14 +1,15 @@
 package org.kuleuven.engineering;
-import com.google.gson.*;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
 
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 public class DataReader {
