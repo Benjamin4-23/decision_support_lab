@@ -1,20 +1,18 @@
 package org.kuleuven.engineering;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import org.json.JSONObject;
 
 public class Request {
-    //ID int, pickupLocation str, placeLocation str, boxID str
     private int ID;
     private String pickupLocation;
     private String placeLocation;
     private String box;
 
-    public Request(JsonObject object) {
-        pickupLocation = object.get("pickupLocation").getAsJsonArray().get(0).getAsString();
-        placeLocation = object.get("placeLocation").getAsJsonArray().get(0).getAsString();
-        ID = object.get("ID").getAsInt();
-        box = object.get("boxID").getAsString();
+    public Request(JSONObject object) {
+        pickupLocation = object.getJSONArray("pickupLocation").getString(0);
+        placeLocation = object.getJSONArray("placeLocation").getString(0);
+        ID = object.getInt("ID");
+        box = object.getString("boxID");
     }
 
     public String getPickupLocation() {

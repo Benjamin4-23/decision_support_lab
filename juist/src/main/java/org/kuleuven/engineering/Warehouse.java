@@ -1,8 +1,8 @@
 package org.kuleuven.engineering;
+import java.util.List;
+
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
-
-import java.util.List;
 public class Warehouse {
     private Graph graph;
     private List<Vehicle> vehicles;

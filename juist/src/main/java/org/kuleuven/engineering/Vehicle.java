@@ -1,5 +1,5 @@
 package org.kuleuven.engineering;
-import com.google.gson.JsonObject;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,11 +18,11 @@ public class Vehicle {
         this.carriedBoxes = new ArrayList<>();
     }
 
-    public Vehicle(JsonObject object) {
-        ID = object.get("ID").getAsInt();
-        name = object.get("name").getAsString();
-        this.location = new Location(object.get("xCoordinate").getAsInt(), object.get("yCoordinate").getAsInt());
-        capacity = object.get("capacity").getAsInt();
+    public Vehicle(JSONObject object) {
+        ID = object.getInt("ID");
+        name = object.getString("name");
+        this.location = new Location(object.getInt("xCoordinate"), object.getInt("yCoordinate"));
+        capacity = object.getInt("capacity");
 
         this.carriedBoxes = new ArrayList<>(capacity);
     }

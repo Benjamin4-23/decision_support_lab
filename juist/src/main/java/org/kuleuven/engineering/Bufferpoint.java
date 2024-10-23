@@ -1,14 +1,14 @@
 package org.kuleuven.engineering;
 
-import com.google.gson.JsonObject;
+import org.json.JSONObject;
 
 public class Bufferpoint implements IStorage {
     private int ID;
     private String name;
 
-    public Bufferpoint(JsonObject object) {
-        ID = object.get("ID").getAsInt();
-        name = object.get("name").getAsString();
+    public Bufferpoint(JSONObject object) {
+        ID = object.getInt("ID");
+        name = object.getString("name");
     }
 
     @Override

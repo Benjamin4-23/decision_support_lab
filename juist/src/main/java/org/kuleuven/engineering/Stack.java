@@ -1,6 +1,7 @@
 package org.kuleuven.engineering;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,14 +17,15 @@ public class Stack implements IStorage {
         this.boxes = new ArrayList<>(capacity);
     }
 
-    public Stack(JsonObject object, int capacity) {
-        ID = object.get("ID").getAsInt();
-        name = object.get("name").getAsString();
+    public Stack(JSONObject object, int capacity) {
+        ID = object.getInt("ID");
+        name = object.getString("name");
         this.capacity = capacity;
         this.boxes = new ArrayList<>(capacity);
-        for (JsonElement element : object.get("boxes").getAsJsonArray()) {
-            String name = element.getAsString();
-            this.boxes.add(new Box(name));
+        JSONArray boxArray = object.getJSONArray("boxes");
+        for (int i = 0; i < boxArray.length(); i++) {
+            String boxName = boxArray.getString(i);
+            this.boxes.add(new Box(boxName));
         }
     }
 
@@ -48,11 +50,11 @@ public class Stack implements IStorage {
     }
 
     @Override
-    public Box peek(){
+    public Box peek() {
         return new Box("");
     }
 
-    public boolean isFull(){
+    public boolean isFull() {
         return this.boxes.size() >= this.capacity;
     }
 }

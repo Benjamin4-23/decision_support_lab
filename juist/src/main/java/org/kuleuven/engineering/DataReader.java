@@ -1,66 +1,60 @@
 package org.kuleuven.engineering;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
 
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class DataReader {
-    public static Warehouse read(Path filePath){
-        try(FileReader reader = new FileReader(filePath.toFile())){
-            JsonObject object = JsonParser.parseReader(reader).getAsJsonObject();
+    public static Warehouse read(Path filePath) {
+        try {
+            String content = Files.readString(filePath);
+            JSONObject object = JsonParser.parseString(content);
 
-            int loadingDuration = object.get("loadingduration").getAsInt();
-            int vehicleSpeed = object.get("vehiclespeed").getAsInt();
-            int stackCapacity = object.get("stackcapacity").getAsInt();
+            int loadingDuration = object.getInt("loadingduration");
+            int vehicleSpeed = object.getInt("vehiclespeed");
+            int stackCapacity = object.getInt("stackcapacity");
 
-            List<JsonElement> Jstacks = object.get("stacks").getAsJsonArray().asList();
-            List<JsonElement> Jbufferpoints = object.get("bufferpoints").getAsJsonArray().asList();
-            List<JsonElement> Jvehicles = object.get("vehicles").getAsJsonArray().asList();
-            List<JsonElement> Jrequests = object.get("requests").getAsJsonArray().asList();
+            List<Map<String, Object>> Jstacks = JsonParser.toList(object.getJSONArray("stacks"));
+            List<Map<String, Object>> Jbufferpoints = JsonParser.toList(object.getJSONArray("bufferpoints"));
+            List<Map<String, Object>> Jvehicles = JsonParser.toList(object.getJSONArray("vehicles"));
+            List<Map<String, Object>> Jrequests = JsonParser.toList(object.getJSONArray("requests"));
 
             Graph graph = new Graph(vehicleSpeed, loadingDuration);
-            //read
-            for (JsonElement element: Jstacks) {
-                JsonObject Jobject = element.getAsJsonObject();
-                Stack stack = new Stack(Jobject, stackCapacity);
-                Location location = new Location(Jobject.get("x").getAsInt(), Jobject.get("y").getAsInt());
+
+            for (Map<String, Object> Jobject : Jstacks) {
+                Stack stack = new Stack(new JSONObject(Jobject), stackCapacity);
+                Location location = new Location((int) Jobject.get("x"), (int) Jobject.get("y"));
                 graph.addNode(new GraphNode(stack, location));
             }
 
-            for (JsonElement element: Jbufferpoints) {
-                JsonObject Jobject = element.getAsJsonObject();
-                Bufferpoint bufferpoint = new Bufferpoint(Jobject);
-                Location location = new Location(Jobject.get("x").getAsInt(), Jobject.get("y").getAsInt());
+            for (Map<String, Object> Jobject : Jbufferpoints) {
+                Bufferpoint bufferpoint = new Bufferpoint(new JSONObject(Jobject));
+                Location location = new Location((int) Jobject.get("x"), (int) Jobject.get("y"));
                 graph.addNode(new GraphNode(bufferpoint, location));
             }
-            List<Vehicle> vehicles = Jvehicles.stream().map(e -> new Vehicle(e.getAsJsonObject())).toList();
 
-            List<Request> requests = Jrequests.stream().map(e -> new Request(e.getAsJsonObject())).toList();
+            List<Vehicle> vehicles = new ArrayList<>();
+            for (Map<String, Object> Jobject : Jvehicles) {
+                vehicles.add(new Vehicle(new JSONObject(Jobject)));
+            }
+
+            List<Request> requests = new ArrayList<>();
+            for (Map<String, Object> Jobject : Jrequests) {
+                requests.add(new Request(new JSONObject(Jobject)));
+            }
 
             return new Warehouse(graph, vehicles, requests);
-        } catch (IOException ex){
+        } catch (IOException ex) {
             ex.printStackTrace();
         }
         return null;
     }
-
-    private static List<Stack> parseStacks(List<JsonElement> Jstacks, int capacity){
-        List<Stack> stacks = new ArrayList<>(Jstacks.size());
-        for (JsonElement element: Jstacks) {
-            JsonObject object = element.getAsJsonObject();
-            Stack stack = new Stack(object, capacity);
-            Location location = new Location(object.get("x").getAsInt(), object.get("y").getAsInt());
-
-        }
-        return stacks;
-    }
-
 }
