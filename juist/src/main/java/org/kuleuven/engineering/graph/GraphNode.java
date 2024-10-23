@@ -8,7 +8,7 @@ public class GraphNode {
     private boolean isBuffer;
     private boolean isVehiclePresent;
     IStorage storage;
-    private Location location;
+    private final Location location;
 
     public GraphNode(IStorage storage, Location location){
         isVehiclePresent = false;
@@ -38,4 +38,8 @@ public class GraphNode {
     public Location getLocation() {
         return location;
     }
+    public IStorage getStorage() {
+        return storage;
+    }
+
 }

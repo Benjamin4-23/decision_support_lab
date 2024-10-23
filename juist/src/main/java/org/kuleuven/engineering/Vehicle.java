@@ -1,15 +1,15 @@
 package org.kuleuven.engineering;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONObject;
+
 public class Vehicle {
-    private int ID;
+    private final int ID;
     private String name;
-    private int capacity;
-    private Location location;
-    private List<Box> carriedBoxes;
+    private final int capacity;
+    private final Location location;
+    private final List<Box> carriedBoxes;
 
     public Vehicle(int ID, int capacity, int initialX, int initialY) {
         this.ID = ID;
@@ -40,16 +40,24 @@ public class Vehicle {
 
     public void moveTo(double targetX, double targetY) {
         // Implement movement logic
+        this.location.setX((int) targetX);
+        this.location.setY((int) targetY);
     }
 
     public boolean loadBox(Box box) {
-        // Implement loading logic
+        if (carriedBoxes.size() < capacity) {
+            carriedBoxes.add(box);
+            return true;
+        }
         return false;
     }
 
     public boolean unloadBox(Box box) {
-        // Implement unloading logic
-        return false;
+        return carriedBoxes.remove(box);
+    }
+
+    public boolean isFull() {
+        return carriedBoxes.size() >= capacity;
     }
 
     // Getters and setters

@@ -1,15 +1,19 @@
 package org.kuleuven.engineering.graph;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.kuleuven.engineering.Location;
 
-import java.util.*;
-
 public class Graph {
-    private List<GraphNode> nodes;
+    private final List<GraphNode> nodes;
     private double[][] adjacencyMatrix;
-    private Map<GraphNode, List<Pair<GraphNode, Double>>> adjacencyList;
-    private int vehicleSpeed;
-    private int loadingSpeed;
+    private final Map<GraphNode, List<Pair<GraphNode, Double>>> adjacencyList;
+    private final int vehicleSpeed;
+    private final int loadingSpeed;
 
     public Graph(int vehicleSpeed, int loadingSpeed){
         this.nodes = new ArrayList<>();
@@ -49,6 +53,35 @@ public class Graph {
         }
     }
 
+    public GraphNode getNodeByName(String name) {
+        for (GraphNode node : nodes) {
+            if (node.getName().equals(name)) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    public double getDistanceToClosestNode(String locationName) {
+        GraphNode targetNode = getNodeByName(locationName);
+        if (targetNode == null) {
+            return Double.POSITIVE_INFINITY;
+        }
+
+        double minDistance = Double.POSITIVE_INFINITY;
+        for (GraphNode node : nodes) {
+            double distance = getDistance(node, targetNode);
+            if (distance < minDistance) {
+                minDistance = distance;
+            }
+        }
+        return minDistance;
+    }
+
+    public List<GraphNode> getNodes() {
+        return nodes;
+    }
+
     public Pair<GraphNode, Double> getClosestNode(Location location) {
         GraphNode closestNode = null;
         double minDistance = Double.POSITIVE_INFINITY;
@@ -81,6 +114,31 @@ public class Graph {
         int index1 = nodes.indexOf(node1);
         int index2 = nodes.indexOf(node2);
         return adjacencyMatrix[index1][index2];
+    }
+    public double getDistanceLocation(Location start, Location end, boolean vehicle) {
+        if (vehicle) {
+            return calculateDistance(start, end);
+        } else {
+            int index1 = -1;
+            int index2 = -1;
+            for (int i = 0; i < nodes.size(); i++) {
+                GraphNode node = nodes.get(i);
+                if (node.getLocation().equals(start)) {
+                    index1 = i;
+                }
+                if (node.getLocation().equals(end)) {
+                    index2 = i;
+                }
+                if (index1 != -1 && index2 != -1) {
+                    break;
+                }
+            }
+            if (index1 == -1 || index2 == -1) {
+                throw new IllegalArgumentException("Start or end location not found in the graph.");
+            }
+            return adjacencyMatrix[index1][index2];
+        }
+        
     }
 
     public class Pair<T, U> {
@@ -134,4 +192,13 @@ public class Graph {
 
         return sb.toString();
     }
+
+    public int getVehicleSpeed() {
+        return vehicleSpeed;
+    }
+
+    public int getLoadingSpeed() {
+        return loadingSpeed;
+    }
+
 }

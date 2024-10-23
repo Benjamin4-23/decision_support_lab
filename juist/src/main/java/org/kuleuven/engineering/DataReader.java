@@ -1,16 +1,15 @@
 package org.kuleuven.engineering;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.kuleuven.engineering.graph.Graph;
-import org.kuleuven.engineering.graph.GraphNode;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.json.JSONObject;
+import org.kuleuven.engineering.graph.Graph;
+import org.kuleuven.engineering.graph.GraphNode;
 
 public class DataReader {
     public static Warehouse read(Path filePath) {

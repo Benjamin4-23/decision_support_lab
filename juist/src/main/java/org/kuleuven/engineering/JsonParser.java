@@ -1,11 +1,11 @@
 package org.kuleuven.engineering;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class JsonParser {
 

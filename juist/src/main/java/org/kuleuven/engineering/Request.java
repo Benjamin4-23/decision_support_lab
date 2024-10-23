@@ -3,16 +3,16 @@ package org.kuleuven.engineering;
 import org.json.JSONObject;
 
 public class Request {
-    private int ID;
-    private String pickupLocation;
-    private String placeLocation;
-    private String box;
+    private final int ID;
+    private final String pickupLocation;
+    private final String placeLocation;
+    private final String boxID;
 
     public Request(JSONObject object) {
         pickupLocation = object.getJSONArray("pickupLocation").getString(0);
         placeLocation = object.getJSONArray("placeLocation").getString(0);
         ID = object.getInt("ID");
-        box = object.getString("boxID");
+        boxID = object.getString("boxID");
     }
 
     public String getPickupLocation() {
@@ -21,5 +21,13 @@ public class Request {
 
     public String getPlaceLocation() {
         return placeLocation;
+    }
+
+    public String getBoxID() {
+        return boxID;
+    }
+
+    public int getID() {
+        return ID;
     }
 }
