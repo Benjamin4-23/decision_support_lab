@@ -7,23 +7,22 @@ import java.util.List;
 import java.util.Map;
 
 import org.kuleuven.engineering.Location;
+import org.kuleuven.engineering.Vehicle;
 
 public class Graph {
     private final List<GraphNode> nodes;
     private double[][] adjacencyMatrix;
     private final Map<GraphNode, List<Pair<GraphNode, Double>>> adjacencyList;
     private final int vehicleSpeed;
-    private final int loadingSpeed;
 
-    public Graph(int vehicleSpeed, int loadingSpeed){
+    public Graph(int vehicleSpeed){
         this.nodes = new ArrayList<>();
         this.adjacencyList = new HashMap<>();
         this.vehicleSpeed = vehicleSpeed;
-        this.loadingSpeed = loadingSpeed;
     }
 
     private double calculateDistance(Location l1, Location l2){
-        return Math.sqrt(Math.pow(l2.getX() - l1.getX(), 2) + Math.pow(l2.getY() - l1.getY(), 2));
+        return Math.sqrt(Math.pow(l2.getX() - l1.getX(), 2) + Math.pow(l2.getY() - l1.getY(), 2)) / vehicleSpeed;
     }
 
     public void addNode(GraphNode node){
@@ -62,7 +61,7 @@ public class Graph {
         return null;
     }
 
-    public double getDistanceToClosestNode(String locationName) {
+    public double getTimeToClosestNode(String locationName) {
         GraphNode targetNode = getNodeByName(locationName);
         if (targetNode == null) {
             return Double.POSITIVE_INFINITY;
@@ -70,7 +69,7 @@ public class Graph {
 
         double minDistance = Double.POSITIVE_INFINITY;
         for (GraphNode node : nodes) {
-            double distance = getDistance(node, targetNode);
+            double distance = getTravelTime(node, targetNode);
             if (distance < minDistance) {
                 minDistance = distance;
             }
@@ -87,7 +86,7 @@ public class Graph {
         double minDistance = Double.POSITIVE_INFINITY;
 
         for (GraphNode node : nodes) {
-            double distance = calculateDistance(node.getLocation(), location) * vehicleSpeed;
+            double distance = calculateDistance(node.getLocation(), location);
             if (distance < minDistance) {
                 minDistance = distance;
                 closestNode = node;
@@ -110,14 +109,21 @@ public class Graph {
         }
     }
 
-    public double getDistance(GraphNode node1, GraphNode node2) {
+    public double getTravelTime(GraphNode node1, GraphNode node2) {
         int index1 = nodes.indexOf(node1);
         int index2 = nodes.indexOf(node2);
         return adjacencyMatrix[index1][index2];
     }
 
+    public double getTravelTime(Vehicle vehicle, GraphNode node){
+        if(vehicle.currentNode!=null){
+            return getTravelTime(vehicle.currentNode, node);
+        }
+        return calculateDistance(vehicle.getLocation(), node.getLocation());
+    }
 
-    public double getDistanceLocation(GraphNode start, GraphNode end, boolean vehicle) {
+
+    /*public double getDistanceLocation(GraphNode start, GraphNode end, boolean vehicle) {
         List<GraphNode> atNodes = new ArrayList<>();
         if (vehicle) { 
             atNodes = this.nodes.stream().filter(x -> (x.getLocation().getX() == start.getLocation().getX() && x.getLocation().getY() == start.getLocation().getY())).toList();
@@ -132,7 +138,7 @@ public class Graph {
         }
         return adjacencyMatrix[index1][index2];
         
-    }
+    }*/
 
     public class Pair<T, U> {
         public T x;
@@ -149,7 +155,6 @@ public class Graph {
         StringBuilder sb = new StringBuilder();
         sb.append("Graph:\n");
         sb.append(String.format("VehicleSpeed: %d\n", vehicleSpeed));
-        sb.append(String.format("LoadDuration: %d\n", loadingSpeed));
         sb.append("Adjacency Matrix:\n");
 
         int maxWidth = 8;
@@ -188,10 +193,6 @@ public class Graph {
 
     public int getVehicleSpeed() {
         return vehicleSpeed;
-    }
-
-    public int getLoadingSpeed() {
-        return loadingSpeed;
     }
 
 }

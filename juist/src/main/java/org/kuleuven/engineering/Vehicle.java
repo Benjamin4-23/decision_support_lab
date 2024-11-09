@@ -3,12 +3,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.json.JSONObject;
+import org.kuleuven.engineering.graph.GraphNode;
 
 public class Vehicle {
     private final int ID;
     private String name;
     private final int capacity;
-    private final Location location;
+    private Location location;
+    public GraphNode currentNode = null;
     private final List<Box> carriedBoxes;
 
     public Vehicle(int ID, int capacity, int initialX, int initialY) {
@@ -42,6 +44,15 @@ public class Vehicle {
         // Implement movement logic
         this.location.setX((int) targetX);
         this.location.setY((int) targetY);
+    }
+
+    public void moveTo(Location location) {
+        this.location = location;
+    }
+
+    public void moveTo(GraphNode node) {
+        this.location = node.getLocation();
+        this.currentNode = node;
     }
 
     public boolean loadBox(Box box) {

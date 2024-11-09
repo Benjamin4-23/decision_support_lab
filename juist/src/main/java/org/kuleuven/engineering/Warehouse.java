@@ -18,12 +18,14 @@ public class Warehouse {
     private final Set<GraphNode> lockedNodes = new HashSet<>();
     private final List<String> operationLog = new ArrayList<>();
     private final HashMap<String, GraphNode> boxLocationMap = new HashMap<>(); // Map to track box locations
-    private int currentTime = 0;
+    private double currentTime = 0;
+    private final int loadingSpeed;
 
-    public Warehouse(Graph graph, List<Vehicle> vehicles, List<Request> requests) {
+    public Warehouse(Graph graph, List<Vehicle> vehicles, List<Request> requests, int loadingSpeed) {
         this.graph = graph;
         this.vehicles = vehicles;
         this.requests = requests;
+        this.loadingSpeed = loadingSpeed;
         calculateStartingState();
     }
 
@@ -36,8 +38,7 @@ public class Warehouse {
         }
         // Initialize box locations
         for (GraphNode node : graph.getNodes()) {
-            if (node.getStorage() instanceof Stack) {
-                Stack stack = (Stack) node.getStorage();
+            if (node.getStorage() instanceof Stack stack) {
                 for (Box box : stack.getBoxes()) {
                     boxLocationMap.put(box.getId(), node);
                 }
@@ -49,8 +50,8 @@ public class Warehouse {
         Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
             // Prioritize requests based on some criteria, e.g., distance or urgency
             return Double.compare(
-                graph.getDistanceToClosestNode(r1.getPickupLocation()),
-                graph.getDistanceToClosestNode(r2.getPickupLocation())
+                graph.getTimeToClosestNode(r1.getPickupLocation()),
+                graph.getTimeToClosestNode(r2.getPickupLocation())
             );
         });
 
@@ -58,7 +59,7 @@ public class Warehouse {
 
         while (!requestQueue.isEmpty()) {
             Request request = requestQueue.poll();
-            Vehicle assignedVehicle = findAvailableVehicle(request);
+            Vehicle assignedVehicle = findAvailableVehicle();
 
             if (assignedVehicle != null) {
                 processRequest(assignedVehicle, request);
@@ -69,7 +70,7 @@ public class Warehouse {
         }
     }
 
-    private Vehicle findAvailableVehicle(Request request) {
+    private Vehicle findAvailableVehicle() {
         for (Vehicle vehicle : vehicles) {
             if (!vehicle.isFull()) {
                 return vehicle;
@@ -87,43 +88,39 @@ public class Warehouse {
         }
 
         // Move vehicle to the current location of the box
-        int startX = vehicle.getLocation().getX();
-        int startY = vehicle.getLocation().getY();
-        int startTime = currentTime;
+        Location startLocation = vehicle.getLocation();
+        double startTime = currentTime;
 
-        currentTime += calculateTravelTime(new GraphNode(vehicle.getLocation()), currentBoxNode, true);
+        currentTime += graph.getTravelTime(vehicle, currentBoxNode);
         vehicle.moveTo(currentBoxNode.getLocation().getX(), currentBoxNode.getLocation().getY());
 
         // Handle relocations if necessary
-        if (currentBoxNode.getStorage() instanceof Stack) {
+        if (currentBoxNode.getStorage() instanceof Stack stack) {
             lockNode(currentBoxNode);
-            Stack stack = (Stack) currentBoxNode.getStorage();
             while (!stack.isBoxOnTop(request.getBoxID())) {
                 Box topBox = stack.removeBox();
                 if (topBox != null) {
                     GraphNode tempNode = findTemporaryLocation(1);
                     if (tempNode != null) {
                         // Move to temporary location
-                        int tempStartX = vehicle.getLocation().getX();
-                        int tempStartY = vehicle.getLocation().getY();
-                        int tempStartTime = currentTime;
-
+                        Location tempLocation = vehicle.getLocation();
+                        double tempStartTime = currentTime;
                         unlockNode(currentBoxNode);
-                        vehicle.moveTo(tempNode.getLocation().getX(), tempNode.getLocation().getY());
-                        currentTime += calculateTravelTime(currentBoxNode, tempNode, false);
+                        vehicle.moveTo(tempNode.getLocation());
+                        currentTime += graph.getTravelTime(currentBoxNode, tempNode);
 
                         // Unload the box
                         lockNode(tempNode);
                         if (vehicle.unloadBox(topBox)) {
-                            currentTime += graph.getLoadingSpeed();
-                            logOperation(vehicle, tempStartX, tempStartY, tempStartTime, vehicle.getLocation().getX(), vehicle.getLocation().getY(), currentTime, topBox.getId(), "PL");
+                            currentTime += loadingSpeed;
+                            logOperation(vehicle, tempLocation, tempStartTime, vehicle.getLocation(), currentTime, topBox.getId(), "PL");
                             boxLocationMap.put(topBox.getId(), tempNode); // Update box location
                         }
                         unlockNode(tempNode);
 
                         // Move back to original stack
                         vehicle.moveTo(currentBoxNode.getLocation().getX(), currentBoxNode.getLocation().getY());
-                        currentTime += calculateTravelTime(tempNode, currentBoxNode, false);
+                        currentTime += graph.getTravelTime(tempNode, currentBoxNode);
                         lockNode(currentBoxNode);
                     }
                 }
@@ -133,26 +130,25 @@ public class Warehouse {
         // Load the box
         Box box = new Box(request.getBoxID());
         if (vehicle.loadBox(box)) {
-            currentTime += graph.getLoadingSpeed();
-            logOperation(vehicle, startX, startY, startTime, vehicle.getLocation().getX(), vehicle.getLocation().getY(), currentTime, box.getId(), "PU");
+            currentTime += loadingSpeed;
+            logOperation(vehicle, startLocation, startTime, vehicle.getLocation(), currentTime, box.getId(), "PU");
             boxLocationMap.remove(box.getId()); // Box is now on the vehicle
         }
         unlockNode(currentBoxNode);
 
         // Move vehicle to place location
         GraphNode placeNode = graph.getNodeByName(request.getPlaceLocation());
-        startX = vehicle.getLocation().getX();
-        startY = vehicle.getLocation().getY();
+        startLocation = vehicle.getLocation();
         startTime = currentTime;
 
-        vehicle.moveTo(placeNode.getLocation().getX(), placeNode.getLocation().getY());
-        currentTime += calculateTravelTime(currentBoxNode, placeNode, false);
+        vehicle.moveTo(placeNode);
+        currentTime += graph.getTravelTime(currentBoxNode, placeNode);
 
         // Unload the box
         lockNode(placeNode);
         if (vehicle.unloadBox(box)) {
-            currentTime += graph.getLoadingSpeed();
-            logOperation(vehicle, startX, startY, startTime, vehicle.getLocation().getX(), vehicle.getLocation().getY(), currentTime, box.getId(), "PL");
+            currentTime += loadingSpeed;
+            logOperation(vehicle, startLocation, startTime, vehicle.getLocation(), currentTime, box.getId(), "PL");
             boxLocationMap.put(box.getId(), placeNode); // Update box location
         }
         unlockNode(placeNode);
@@ -176,8 +172,7 @@ public class Warehouse {
 
     private GraphNode findTemporaryLocation(int numberOfBoxes) {
         for (GraphNode node : graph.getNodes()) {
-            if (node.getStorage() instanceof Stack) {
-                Stack stack = (Stack) node.getStorage();
+            if (node.getStorage() instanceof Stack stack) {
                 if (stack.getCapacity() - stack.getBoxes().size() >= numberOfBoxes) {
                     return node;
                 }
@@ -186,13 +181,12 @@ public class Warehouse {
         return null;
     }
 
-    private int calculateTravelTime(GraphNode start, GraphNode end, boolean vehicle) {
-        double distance = graph.getDistanceLocation(start, end, vehicle);
-        return (int) (distance / graph.getVehicleSpeed());
-    }
-
-    private void logOperation(Vehicle vehicle, int startX, int startY, int startTime, int endX, int endY, int endTime, String boxID, String operation) {
-        String logEntry = String.format("%s;%d;%d;%d;%d;%d;%d;%s;%s",
+    private void logOperation(Vehicle vehicle, Location startLocation , double startTime, Location endLocation, double endTime, String boxID, String operation) {
+        int startX = startLocation.getX();
+        int startY = startLocation.getY();
+        int endX = endLocation.getX();
+        int endY = endLocation.getY();
+        String logEntry = String.format("%s;%d;%d;%.0f;%d;%d;%.0f;%s;%s",
                 vehicle.getName(), startX, startY, startTime, endX, endY, endTime, boxID, operation);
         operationLog.add(logEntry);
     }

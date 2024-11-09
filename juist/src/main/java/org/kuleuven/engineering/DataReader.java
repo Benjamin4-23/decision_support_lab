@@ -26,7 +26,7 @@ public class DataReader {
             List<Map<String, Object>> Jvehicles = JsonParser.toList(object.getJSONArray("vehicles"));
             List<Map<String, Object>> Jrequests = JsonParser.toList(object.getJSONArray("requests"));
 
-            Graph graph = new Graph(vehicleSpeed, loadingDuration);
+            Graph graph = new Graph(vehicleSpeed);
 
             for (Map<String, Object> Jobject : Jstacks) {
                 Stack stack = new Stack(new JSONObject(Jobject), stackCapacity);
@@ -50,7 +50,7 @@ public class DataReader {
                 requests.add(new Request(new JSONObject(Jobject)));
             }
 
-            return new Warehouse(graph, vehicles, requests);
+            return new Warehouse(graph, vehicles, requests, loadingDuration);
         } catch (IOException ex) {
             ex.printStackTrace();
         }
