@@ -8,9 +8,7 @@ public class GraphNode {
     private boolean isBuffer;
     IStorage storage;
     private final Location location;
-
-    private double maxVisitTime = -1;
-    private double minVisitTime = -1;
+    private boolean vehiclePresent;
 
     public GraphNode(Location location) { // demo constructor voor vehicle object als node mee te geven
         this.location = location;
@@ -42,6 +40,14 @@ public class GraphNode {
     }
     public IStorage getStorage() {
         return storage;
+    }
+
+    public void setVehiclePresent(boolean vehiclePresent){
+        this.vehiclePresent = vehiclePresent;
+    }
+
+    public boolean isVehiclePresent(){
+        return vehiclePresent;
     }
 
 }
