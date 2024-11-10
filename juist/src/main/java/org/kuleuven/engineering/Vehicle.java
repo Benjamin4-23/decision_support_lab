@@ -11,6 +11,8 @@ public class Vehicle {
     private final int capacity;
     private Location location;
     public GraphNode currentNode = null;
+
+    public boolean available = true;
     private final List<Box> carriedBoxes;
 
     public Vehicle(int ID, int capacity, int initialX, int initialY) {
@@ -69,6 +71,12 @@ public class Vehicle {
 
     public boolean isFull() {
         return carriedBoxes.size() >= capacity;
+    }
+    public void setAvailability(boolean availabe){
+        this.available = availabe;
+    }
+    public boolean isAvailable(){
+        return available;
     }
 
     // Getters and setters

@@ -13,12 +13,14 @@ public class Graph {
     private final List<GraphNode> nodes;
     private double[][] adjacencyMatrix;
     private final Map<GraphNode, List<Pair<GraphNode, Double>>> adjacencyList;
+    public final Map<String, GraphNode> nodeMap;
     private final int vehicleSpeed;
 
     public Graph(int vehicleSpeed){
         this.nodes = new ArrayList<>();
         this.adjacencyList = new HashMap<>();
         this.vehicleSpeed = vehicleSpeed;
+        this.nodeMap = new HashMap<>();
     }
 
     private double calculateDistance(Location l1, Location l2){
@@ -28,6 +30,7 @@ public class Graph {
     public void addNode(GraphNode node){
         if (!nodes.contains(node)) {
             nodes.add(node);
+            nodeMap.put(node.getName(), node);
             int n = nodes.size();
             double[][] newMatrix = new double[n][n];
             for (int i = 0; i < n - 1; i++) {
@@ -52,17 +55,8 @@ public class Graph {
         }
     }
 
-    public GraphNode getNodeByName(String name) {
-        for (GraphNode node : nodes) {
-            if (node.getName().equals(name)) {
-                return node;
-            }
-        }
-        return null;
-    }
-
     public double getTimeToClosestNode(String locationName) {
-        GraphNode targetNode = getNodeByName(locationName);
+        GraphNode targetNode = nodeMap.get(locationName);
         if (targetNode == null) {
             return Double.POSITIVE_INFINITY;
         }

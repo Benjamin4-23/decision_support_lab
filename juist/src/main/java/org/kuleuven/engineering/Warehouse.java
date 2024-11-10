@@ -1,12 +1,6 @@
 package org.kuleuven.engineering;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
@@ -18,6 +12,7 @@ public class Warehouse {
     private final Set<GraphNode> lockedNodes = new HashSet<>();
     private final List<String> operationLog = new ArrayList<>();
     private final HashMap<String, GraphNode> boxLocationMap = new HashMap<>(); // Map to track box locations
+    private Map<Vehicle, Request> pendingDropOffs = new HashMap<>();
     private double currentTime = 0;
     private final int loadingSpeed;
 
@@ -31,11 +26,11 @@ public class Warehouse {
 
     private void calculateStartingState() {
         this.graph.calculateAllDistances();
-        for (Vehicle vehicle : vehicles) {
+        /*for (Vehicle vehicle : vehicles) {
             Graph.Pair<GraphNode, Double> pair = this.graph.getClosestNode(vehicle.getLocation());
             GraphNode node = pair.x;
             node.setVehiclePresent(true);
-        }
+        }*/
         // Initialize box locations
         for (GraphNode node : graph.getNodes()) {
             if (node.getStorage() instanceof Stack stack) {
@@ -58,25 +53,41 @@ public class Warehouse {
         requestQueue.addAll(requests);
 
         while (!requestQueue.isEmpty()) {
-            Request request = requestQueue.poll();
+            Request request = requestQueue.peek();
             Vehicle assignedVehicle = findAvailableVehicle();
 
             if (assignedVehicle != null) {
-                processRequest(assignedVehicle, request);
-            } else {
-                // Handle case where no vehicle is available
-                System.out.println("No available vehicle for request: " + request.getID());
             }
         }
     }
 
     private Vehicle findAvailableVehicle() {
         for (Vehicle vehicle : vehicles) {
-            if (!vehicle.isFull()) {
+            if (vehicle.isAvailable()) {
                 return vehicle;
             }
         }
         return null;
+    }
+
+    private void handleRequest(Vehicle vehicle, Request request){
+        GraphNode currentBoxNode = boxLocationMap.get(request.getBoxID());
+        GraphNode dropOffBoxNode = graph.nodeMap.get(request.getPlaceLocation());
+        if (currentBoxNode == null || dropOffBoxNode == null) {
+            System.out.println("Box " + request.getBoxID() + " not found.");
+        }
+
+        double timeToGetThere = 0.0;
+        if(currentBoxNode.isVisited()){
+            // assign vehicle
+            if(Objects.equals(currentBoxNode.getStorage().peek().getId(), request.getBoxID())){
+                // no relocation needed
+            } else {
+                // relocation needed
+            }
+        }
+
+
     }
 
     private void processRequest(Vehicle vehicle, Request request) {
@@ -137,7 +148,7 @@ public class Warehouse {
         unlockNode(currentBoxNode);
 
         // Move vehicle to place location
-        GraphNode placeNode = graph.getNodeByName(request.getPlaceLocation());
+        GraphNode placeNode = graph.nodeMap.get(request.getPlaceLocation());
         startLocation = vehicle.getLocation();
         startTime = currentTime;
 

@@ -6,20 +6,20 @@ import org.kuleuven.engineering.Location;
 
 public class GraphNode {
     private boolean isBuffer;
-    private boolean isVehiclePresent;
     IStorage storage;
     private final Location location;
+
+    private double maxVisitTime = -1;
+    private double minVisitTime = -1;
 
     public GraphNode(Location location) { // demo constructor voor vehicle object als node mee te geven
         this.location = location;
         this.isBuffer = false;
-        this.isVehiclePresent = false;
         this.storage = null;
         
     }
 
     public GraphNode(IStorage storage, Location location){
-        isVehiclePresent = false;
         this.location = location;
         this.storage = storage;
         if(storage instanceof Bufferpoint){
@@ -36,12 +36,6 @@ public class GraphNode {
     }
     public void setBuffer(boolean buffer) {
         isBuffer = buffer;
-    }
-    public boolean isVehiclePresent() {
-        return isVehiclePresent;
-    }
-    public void setVehiclePresent(boolean vehiclePresent) {
-        isVehiclePresent = vehiclePresent;
     }
     public Location getLocation() {
         return location;
