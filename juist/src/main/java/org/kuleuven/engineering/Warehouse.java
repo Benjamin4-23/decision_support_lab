@@ -102,7 +102,7 @@ public class Warehouse {
         double startTime = currentTime;
 
         currentTime += graph.getTravelTime(vehicle, currentBoxNode);
-        vehicle.moveTo(currentBoxNode.getLocation().getX(), currentBoxNode.getLocation().getY());
+        vehicle.moveTo(currentBoxNode.getLocation());
 
         // Handle relocations if necessary
         if (currentBoxNode.getStorage() instanceof Stack stack) {
@@ -129,7 +129,7 @@ public class Warehouse {
                         unlockNode(tempNode);
 
                         // Move back to original stack
-                        vehicle.moveTo(currentBoxNode.getLocation().getX(), currentBoxNode.getLocation().getY());
+                        vehicle.moveTo(currentBoxNode.getLocation());
                         currentTime += graph.getTravelTime(tempNode, currentBoxNode);
                         lockNode(currentBoxNode);
                     }
