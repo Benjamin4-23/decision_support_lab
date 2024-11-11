@@ -42,18 +42,16 @@ public class Warehouse {
             }
         }
 
-        Set<Request> removeSet = new HashSet<>();
         for (Request request : requests){
-            if(boxLocationMap.get(request.getBoxID())==null){
-                removeSet.add(request);
+            GraphNode n = graph.nodeMap.get(request.getPickupLocation());
+            if(n.isBuffer()){
+                boxLocationMap.put(request.getBoxID(), n);
             }
-        }
-        for (Request r : removeSet){
-            requests.remove(r);
         }
     }
 
     public void scheduleRequests() {
+        // TODO:vehicle afstand
         Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
             GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
             GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
@@ -63,11 +61,11 @@ public class Warehouse {
 
             for (Vehicle vehicle : vehicles) {
                 if (vehicle.isAvailable()) {
-                    double distance1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
-                    double distance2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
+                    double time1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
+                    double time2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
 
-                    minTime1 = Math.min(minTime1, distance1);
-                    minTime2 = Math.min(minTime2, distance2);
+                    minTime1 = Math.min(minTime1, time1);
+                    minTime2 = Math.min(minTime2, time2);
                 }
             }
 
@@ -79,10 +77,11 @@ public class Warehouse {
         while (!requestQueue.isEmpty() || runningEvents > 0) {
             for (Vehicle vehicle : vehicles){
                 if(vehicle.isAvailable() && !requestQueue.isEmpty()){
-                    //kan beter
-                    Request request = requestQueue.peek();
-                    if(handleRequest(vehicle, request, currentTime)){
-                        requestQueue.poll();
+                    for (Request request: requestQueue) {
+                        if (handleRequest(vehicle, request, currentTime)) {
+                            requestQueue.remove(request);
+                            break;
+                        }
                     }
                 }
                 if(!vehicle.eventQueue.isEmpty()){
@@ -97,6 +96,11 @@ public class Warehouse {
         // src can be null if box is currently moving to another stack, skip until later
         GraphNode src = boxLocationMap.get(request.getBoxID());
         GraphNode dest = graph.nodeMap.get(request.getPlaceLocation());
+
+        if(graph.nodeMap.get(request.getPickupLocation()).isBuffer()){
+            src = graph.nodeMap.get(request.getPickupLocation());
+        }
+
         if(src == null || (src.isLocked() && dest.isLocked())){
             return false;
         }
@@ -104,7 +108,7 @@ public class Warehouse {
         int N = 0;
         Queue<String> boxList = new ArrayDeque<>();
         // add relocations if needed
-        if(!Objects.equals(src.getStorage().peek(), request.getBoxID())){
+        if(!src.isBuffer() && !Objects.equals(src.getStorage().peek(), request.getBoxID())){
             //relocate boxes at source
             Stack s = (Stack) src.getStorage();
             java.util.Stack<String> boxes = (java.util.Stack<String>)s.getBoxes();
@@ -212,8 +216,10 @@ public class Warehouse {
         if(event.type ==  Event.EventType.RELOCATE || event.type == Event.EventType.PICK_UP){
             //src node is null in relocate return
             assert srcNode != null;
-            String box = ((Stack)srcNode.getStorage()).removeBox();
-            assert Objects.equals(box, event.boxId);
+            if(!srcNode.isBuffer()){
+                String box = ((Stack)srcNode.getStorage()).removeBox();
+                assert Objects.equals(box, event.boxId);
+            }
             boxLocationMap.remove(event.boxId);
 
             if(vehicle.getLocation() != srcNode.getLocation()){
