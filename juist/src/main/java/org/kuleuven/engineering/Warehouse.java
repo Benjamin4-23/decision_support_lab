@@ -1,6 +1,14 @@
 package org.kuleuven.engineering;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Queue;
+import java.util.Set;
 
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
@@ -47,11 +55,23 @@ public class Warehouse {
 
     public void scheduleRequests() {
         Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
-            // Prioritize requests based on some criteria, e.g., distance or urgency
-            return Double.compare(
-                graph.getTimeToClosestNode(r1.getPickupLocation()),
-                graph.getTimeToClosestNode(r2.getPickupLocation())
-            );
+            GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
+            GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
+
+            double minDistance1 = Double.MAX_VALUE;
+            double minDistance2 = Double.MAX_VALUE;
+
+            for (Vehicle vehicle : vehicles) {
+                if (vehicle.isAvailable()) {
+                    double distance1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
+                    double distance2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
+
+                    minDistance1 = Math.min(minDistance1, distance1);
+                    minDistance2 = Math.min(minDistance2, distance2);
+                }
+            }
+
+            return Double.compare(minDistance1, minDistance2);
         });
 
         requestQueue.addAll(requests);

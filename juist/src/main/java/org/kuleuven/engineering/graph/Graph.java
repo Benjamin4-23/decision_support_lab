@@ -23,7 +23,7 @@ public class Graph {
         this.nodeMap = new HashMap<>();
     }
 
-    private double calculateTime(Location l1, Location l2){
+    public double calculateTime(Location l1, Location l2){
         return Math.sqrt(Math.pow(l2.getX() - l1.getX(), 2) + Math.pow(l2.getY() - l1.getY(), 2)) / vehicleSpeed;
     }
 
