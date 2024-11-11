@@ -2,9 +2,13 @@ package org.kuleuven.engineering;
 
 import org.json.JSONObject;
 
+import java.util.List;
+import java.util.Stack;
+
 public class Bufferpoint implements IStorage {
     private int ID;
     private String name;
+    private Stack<String> boxes = new Stack<>();
 
     public Bufferpoint(JSONObject object) {
         ID = object.getInt("ID");
@@ -21,19 +25,20 @@ public class Bufferpoint implements IStorage {
         return name;
     }
 
+
     @Override
     public String addBox(String box) {
-        return null;
+        return box;
     }
 
     @Override
     public String removeBox() {
-        return null;
+        return boxes.pop();
     }
 
     @Override
     public String peek() {
-        return null;
+        return boxes.peek();
     }
 
     @Override
@@ -42,7 +47,7 @@ public class Bufferpoint implements IStorage {
     }
 
     @Override
-    public int getFreeSpace() {
-        return 0;
+    public int getFreeSpace() { // niet nodig?
+        return 100;
     }
 }

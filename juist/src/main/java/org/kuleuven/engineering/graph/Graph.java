@@ -23,7 +23,7 @@ public class Graph {
         this.nodeMap = new HashMap<>();
     }
 
-    private double calculateDistance(Location l1, Location l2){
+    private double calculateTime(Location l1, Location l2){
         return Math.sqrt(Math.pow(l2.getX() - l1.getX(), 2) + Math.pow(l2.getY() - l1.getY(), 2)) / vehicleSpeed;
     }
 
@@ -42,7 +42,7 @@ public class Graph {
             adjacencyMatrix[n - 1][n - 1] = 0; // Set self distance to 0
 
             for (int i = 0; i < n - 1; i++) {
-                double distance = calculateDistance(node.getLocation(), nodes.get(i).getLocation());
+                double distance = calculateTime(node.getLocation(), nodes.get(i).getLocation());
                 adjacencyMatrix[n - 1][i] = distance;
                 adjacencyMatrix[i][n - 1] = distance;
                 adjacencyList.computeIfAbsent(nodes.get(i), k -> new ArrayList<>()).add(new Pair<>(node, distance));
@@ -80,7 +80,7 @@ public class Graph {
         double minDistance = Double.POSITIVE_INFINITY;
 
         for (GraphNode node : nodes) {
-            double distance = calculateDistance(node.getLocation(), location);
+            double distance = calculateTime(node.getLocation(), location);
             if (distance < minDistance) {
                 minDistance = distance;
                 closestNode = node;
@@ -113,7 +113,7 @@ public class Graph {
         if(vehicle.currentNode!=null){
             return getTravelTime(vehicle.currentNode, node);
         }
-        return calculateDistance(vehicle.getLocation(), node.getLocation());
+        return calculateTime(vehicle.getLocation(), node.getLocation());
     }
 
 

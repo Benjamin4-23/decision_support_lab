@@ -59,6 +59,7 @@ public class Warehouse {
         while (!requestQueue.isEmpty() || runningEvents > 0) {
             for (Vehicle vehicle : vehicles){
                 if(vehicle.isAvailable() && !requestQueue.isEmpty()){
+                    //kan beter
                     Request request = requestQueue.peek();
                     if(handleRequest(vehicle, request, currentTime)){
                         requestQueue.poll();

@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 public class TestWarehouse {
     public static void main(String[] args) {
         // Define the path to the JSON file you want to test
-        String fileName = "I3_3_1_5.json"; // You can change this to test different files
+        String fileName = "I15_16_1_3.json"; // You can change this to test different files
         Path currentPath = Paths.get(System.getProperty("user.dir")); // current location
         Path filePath = Paths.get(currentPath.toString(), "juist", "data", fileName);
 
