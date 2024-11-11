@@ -58,20 +58,20 @@ public class Warehouse {
             GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
             GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
 
-            double minDistance1 = Double.MAX_VALUE;
-            double minDistance2 = Double.MAX_VALUE;
+            double minTime1 = Double.MAX_VALUE;
+            double minTime2 = Double.MAX_VALUE;
 
             for (Vehicle vehicle : vehicles) {
                 if (vehicle.isAvailable()) {
                     double distance1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
                     double distance2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
 
-                    minDistance1 = Math.min(minDistance1, distance1);
-                    minDistance2 = Math.min(minDistance2, distance2);
+                    minTime1 = Math.min(minTime1, distance1);
+                    minTime2 = Math.min(minTime2, distance2);
                 }
             }
 
-            return Double.compare(minDistance1, minDistance2);
+            return Double.compare(minTime1, minTime2);
         });
 
         requestQueue.addAll(requests);
