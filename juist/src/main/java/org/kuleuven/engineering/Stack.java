@@ -2,6 +2,7 @@ package org.kuleuven.engineering;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -10,22 +11,17 @@ public class Stack implements IStorage {
     private int ID;
     private String name;
     private final int capacity;
-    private final List<Box> boxes;
-
-    public Stack(int capacity) {
-        this.capacity = capacity;
-        this.boxes = new ArrayList<>(capacity);
-    }
+    private final java.util.Stack<String> boxes;
 
     public Stack(JSONObject object, int capacity) {
         ID = object.getInt("ID");
         name = object.getString("name");
         this.capacity = capacity;
-        this.boxes = new ArrayList<>(capacity);
+        this.boxes = new java.util.Stack<>();
         JSONArray boxArray = object.getJSONArray("boxes");
         for (int i = 0; i < boxArray.length(); i++) {
             String boxName = boxArray.getString(i);
-            this.boxes.add(new Box(boxName));
+            this.boxes.add(boxName);
         }
     }
 
@@ -40,51 +36,38 @@ public class Stack implements IStorage {
     }
 
     @Override
-    public boolean addBox(Box box) {
-        if (!isFull()) {
-            boxes.add(box);
-            return true;
-        }
-        return false;
+    public String addBox(String box) {
+        return boxes.push(box);
     }
 
     @Override
-    public Box removeBox() {
-        if (!boxes.isEmpty()) {
-            return boxes.remove(boxes.size() - 1);
-        }
-        return null;
+    public String removeBox() {
+        return boxes.pop();
     }
 
     @Override
-    public Box peek() {
-        if (!boxes.isEmpty()) {
-            return boxes.get(boxes.size() - 1);
-        }
-        return null;
+    public String peek() {
+        return boxes.peek();
     }
 
     public boolean isFull() {
         return this.boxes.size() >= this.capacity;
     }
 
-    public boolean isBoxOnTop(String boxID) {
-        return !boxes.isEmpty() && boxes.get(boxes.size() - 1).getId().equals(boxID);
+    @Override
+    public int getFreeSpace() {
+        return capacity - boxes.size();
     }
 
-    public List<Box> relocateBoxesUntil(String boxID) {
-        List<Box> relocatedBoxes = new ArrayList<>();
-        while (!boxes.isEmpty() && !isBoxOnTop(boxID)) {
-            relocatedBoxes.add(removeBox());
-        }
-        return relocatedBoxes;
+    public boolean isBoxOnTop(String boxID) {
+        return !boxes.isEmpty() && Objects.equals(boxes.peek(), boxID);
     }
 
     public int getCapacity() {
         return capacity;
     }
 
-    public List<Box> getBoxes() {
-        return boxes;
+    public Object getBoxes() {
+        return boxes.clone();
     }
 }

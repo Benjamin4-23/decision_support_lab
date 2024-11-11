@@ -22,17 +22,27 @@ public class Bufferpoint implements IStorage {
     }
 
     @Override
-    public boolean addBox(Box box) {
+    public String addBox(String box) {
+        return null;
+    }
+
+    @Override
+    public String removeBox() {
+        return null;
+    }
+
+    @Override
+    public String peek() {
+        return null;
+    }
+
+    @Override
+    public boolean isFull() {
         return false;
     }
 
     @Override
-    public Box removeBox() {
-        return null;
-    }
-
-    @Override
-    public Box peek() {
-        return null;
+    public int getFreeSpace() {
+        return 0;
     }
 }

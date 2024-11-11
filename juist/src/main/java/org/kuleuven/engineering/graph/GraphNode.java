@@ -8,7 +8,7 @@ public class GraphNode {
     private boolean isBuffer;
     IStorage storage;
     private final Location location;
-    private boolean vehiclePresent;
+    private int locks = 0;
 
     public GraphNode(Location location) { // demo constructor voor vehicle object als node mee te geven
         this.location = location;
@@ -42,12 +42,17 @@ public class GraphNode {
         return storage;
     }
 
-    public void setVehiclePresent(boolean vehiclePresent){
-        this.vehiclePresent = vehiclePresent;
+    public void lock(){
+        locks++;
     }
 
-    public boolean isVehiclePresent(){
-        return vehiclePresent;
+    public void unlock(){
+        if(locks <= 0) return;
+        locks--;
+    }
+
+    public boolean isLocked(){
+        return locks > 0;
     }
 
 }

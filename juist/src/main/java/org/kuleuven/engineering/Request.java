@@ -1,16 +1,23 @@
 package org.kuleuven.engineering;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 public class Request {
     private final int ID;
-    private final String pickupLocation;
-    private final String placeLocation;
+    private String pickupLocation;
+    private String placeLocation;
     private final String boxID;
 
     public Request(JSONObject object) {
-        pickupLocation = object.getJSONArray("pickupLocation").getString(0);
-        placeLocation = object.getJSONArray("placeLocation").getString(0);
+        try{
+            pickupLocation = object.getJSONArray("pickupLocation").getString(0);
+            placeLocation = object.getJSONArray("placeLocation").getString(0);
+        } catch (JSONException e){
+            pickupLocation = object.getString("pickupLocation");
+            placeLocation = object.getString("placeLocation");
+        }
+
         ID = object.getInt("ID");
         boxID = object.getString("boxID");
     }

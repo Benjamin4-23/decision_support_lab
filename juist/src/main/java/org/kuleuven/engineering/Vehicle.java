@@ -1,7 +1,7 @@
 package org.kuleuven.engineering;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.kuleuven.engineering.graph.GraphNode;
 
@@ -11,24 +11,20 @@ public class Vehicle {
     private final int capacity;
     private Location location;
     public GraphNode currentNode = null;
-
-    public boolean available = true;
-    private final List<Box> carriedBoxes;
-
-    public Vehicle(int ID, int capacity, int initialX, int initialY) {
-        this.ID = ID;
-        this.capacity = capacity;
-        this.location = new Location(initialX, initialY);
-        this.carriedBoxes = new ArrayList<>();
-    }
+    public Queue<Event> eventQueue = new ArrayDeque<>();
+    private int carriedBoxes;
+    private boolean availability = true;
 
     public Vehicle(JSONObject object) {
+        try{
+            this.location = new Location(object.getInt("xCoordinate"), object.getInt("yCoordinate"));
+        } catch (JSONException e){
+            this.location = new Location(object.getInt("x"), object.getInt("y"));
+        }
         ID = object.getInt("ID");
         name = object.getString("name");
-        this.location = new Location(object.getInt("xCoordinate"), object.getInt("yCoordinate"));
         capacity = object.getInt("capacity");
-
-        this.carriedBoxes = new ArrayList<>(capacity);
+        this.carriedBoxes = 0;
     }
 
     public int getID(){
@@ -57,27 +53,12 @@ public class Vehicle {
         this.currentNode = node;
     }
 
-    public boolean loadBox(Box box) {
-        if (carriedBoxes.size() < capacity) {
-            carriedBoxes.add(box);
-            return true;
-        }
-        return false;
+    public void setAvailability(boolean available){
+        this.availability = available;
     }
 
-    public boolean unloadBox(Box box) {
-        return carriedBoxes.remove(box);
+    public boolean isAvailable() {
+        return capacity > carriedBoxes && this.availability;
     }
-
-    public boolean isFull() {
-        return carriedBoxes.size() >= capacity;
-    }
-    public void setAvailability(boolean availabe){
-        this.available = availabe;
-    }
-    public boolean isAvailable(){
-        return available;
-    }
-
     // Getters and setters
 }
