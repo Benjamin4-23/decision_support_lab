@@ -56,11 +56,5 @@ public class Request {
         this.status = status;
     }
 
-    public enum REQUEST_STATUS{
-        INITIAL,
-        SRC,
-        SRC_RELOC,
-        DEST,
-        DEST_RELOC
-    }
+
 }

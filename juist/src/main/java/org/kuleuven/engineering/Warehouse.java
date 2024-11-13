@@ -1,11 +1,9 @@
 package org.kuleuven.engineering;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
@@ -55,34 +53,26 @@ public class Warehouse {
     }
 
     public void scheduleRequests() {
-        // TODO:vehicle afstand
-        Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
-            GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
-            GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
-
-            double minTime1 = Double.MAX_VALUE;
-            double minTime2 = Double.MAX_VALUE;
-
-            for (Vehicle vehicle : vehicles) {
-                if (vehicle.isAvailable(currentTime)) {
-                    double time1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
-                    double time2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
-
-                    minTime1 = Math.min(minTime1, time1);
-                    minTime2 = Math.min(minTime2, time2);
-                }
-            }
-
-            return Double.compare(minTime1, minTime2);
-        });
-
-        requestQueue.addAll(requests);
-
-        while (!requestQueue.isEmpty() || !openRequests.isEmpty()) { 
+        List<Request> requestsCopy = new ArrayList<>(requests);
+        while (!requestsCopy.isEmpty() || !openRequests.isEmpty()) { 
             // als er vehicles vrij zijn en minder open requests dan vehicles, dan open request toevoegen om alle vehicles 1 request te geven
             // verder open requests afhandelen
             for (Vehicle vehicle : vehicles){
-                if(vehicle.isAvailable(currentTime) && openRequests.size() < vehicles.size() && !requestQueue.isEmpty()){
+                if(vehicle.isAvailable(currentTime) && openRequests.size() < vehicles.size() && !requestsCopy.isEmpty()){
+                    //beste request toevoegen voor vrij vehicle
+                    Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
+                        GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
+                        GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
+                        double minTime1 = Double.MAX_VALUE;
+                        double minTime2 = Double.MAX_VALUE;
+                        double time1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
+                        double time2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
+                        minTime1 = Math.min(minTime1, time1);
+                        minTime2 = Math.min(minTime2, time2);
+                        return Double.compare(minTime1, minTime2);
+                    });
+                    requestQueue.addAll(requestsCopy);
+
                     openRequests.add(requestQueue.poll());
                 }
             }
@@ -94,10 +84,6 @@ public class Warehouse {
     }
 
     private boolean handleRequest(Vehicle vehicle, Request request, double time){
-        // todo: start tijd en locatie bijhouden, dest geen buffer en full? dan eerst dest relocate, als src buffer dan is remove ipv peek? move naar src, en relocaten tot huidige box vrij en naar dest brengen 
-        // letten op vehicle capacity, vehicle lock, locatie lock, log
-
-
         // request status kan initial zijn dan kijken of dest stack is en vrij, dan naar src gaan PU, anders naar andere stack brengen?
         // request status kan "at src" zijn, dan kijken of relocation nodig, dan  move to temp stack en PL, anders naar dest en PL
         // request status kan "at src relocation" zijn, dan move terug naar src en PU
@@ -105,28 +91,40 @@ public class Warehouse {
         // request status kan "at dest relocation" zijn, dan move to dest 
 
         Location startLocation = vehicle.getLocation();
+        double timeAfterMove = time;
+        double timeAfterOperation = 0;
 
-        if (request.getStatus() == Request.REQUEST_STATUS.INITIAL){
-            // move naar src en PU na beweegtijd+loadingSpeed als dest stack is vrij of dest is buffer, anders naar dest en die vrijmaken
-            // voeg log toe
-            // status wordt "at src"
+        if (request.getStatus() == REQUEST_STATUS.INITIAL){
+
+            // als dest een stack is en full, dan moet er gerelocate worden
+
+
+            if (startLocation != graph.nodeMap.get(request.getPickupLocation()).getLocation()){
+                timeAfterMove += graph.getTravelTime(vehicle, graph.nodeMap.get(request.getPickupLocation()));
+                vehicle.moveTo(graph.nodeMap.get(request.getPickupLocation()));
+            }
+            String box = ((Stack)graph.nodeMap.get(request.getPickupLocation()).getStorage()).removeBox();
+            vehicle.addBox(box);
+            timeAfterOperation = timeAfterMove + loadingSpeed;
+            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, request.getBoxID(), REQUEST_STATUS.SRC);
+            vehicle.setUnavailableUntil(timeAfterOperation);
         }
-        if (request.getStatus() == Request.REQUEST_STATUS.SRC){
+        if (request.getStatus() == REQUEST_STATUS.SRC){
             // kijken of relocation nodig, dan move to temp stack en PL, anders naar dest en PL
             // voeg log toe
             // status wordt "at src relocation" of "at dest"
         }
-        if (request.getStatus() == Request.REQUEST_STATUS.SRC_RELOC){
+        if (request.getStatus() == REQUEST_STATUS.SRC_RELOC){
             // move terug naar src en PU
             // voeg log toe
             // status wordt "at src"
         }
-        if (request.getStatus() == Request.REQUEST_STATUS.DEST){
+        if (request.getStatus() == REQUEST_STATUS.DEST){
             // kijken of relocation nodig, dan move to dest en PL, anders naar dest en PL
             // voeg log toe
             // status wordt "at dest relocation" of "at dest"
         }
-        if (request.getStatus() == Request.REQUEST_STATUS.DEST_RELOC){
+        if (request.getStatus() == REQUEST_STATUS.DEST_RELOC){
             // move terug naar dest en PL
             // voeg log toe
             // status wordt "at dest"
@@ -160,9 +158,6 @@ public class Warehouse {
         //     //moet gerelocate worden
         //     relocateSrc = true;
         // }
-
-
-
 
         // int N = 0;
         // Queue<String> boxList = new ArrayDeque<>();
@@ -325,6 +320,19 @@ public class Warehouse {
                 vehicle.getName(), startX, startY, startTime, endX, endY, endTime, boxID, operation);
         operationLog.add(logEntry);
     }*/
+
+    public void addLogEntry(String vehicleName, Location startLocation, double startTime, Location endLocation, double endTime, String boxId, REQUEST_STATUS type){
+        String operation = switch (type){
+            case SRC -> "PU";
+            case SRC_RELOC -> "PL_RELOCATE";
+            case DEST -> "PL";
+            case DEST_PU -> "PU";
+            case DEST_RELOC -> "PL_RELOCATE";
+            default -> "";
+        };
+        operationLog.add(vehicleName + ";" + startLocation + ";" + startTime  + ";" + endLocation + ";" + endTime + ";"+ boxId + ";" + operation);
+
+    }
 
     public void printOperationLog() {
         for (String logEntry : operationLog) {

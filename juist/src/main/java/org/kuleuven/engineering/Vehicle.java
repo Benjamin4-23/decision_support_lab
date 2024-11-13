@@ -1,5 +1,6 @@
 package org.kuleuven.engineering;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Queue;
 
 import org.json.JSONException;
@@ -15,8 +16,8 @@ public class Vehicle {
     public GraphNode currentNode = null;
     double unavailableUntil = 0;
     public Queue<Event> eventQueue = new ArrayDeque<>();
-    private int carriedBoxes;
-    private boolean availability = true;
+    private ArrayList<String> carriedBoxes;
+    private int carriedBoxesCount;
 
     public Vehicle(JSONObject object) {
         try{
@@ -27,7 +28,8 @@ public class Vehicle {
         ID = object.getInt("ID");
         name = object.getString("name");
         capacity = object.getInt("capacity");
-        this.carriedBoxes = 0;
+        this.carriedBoxesCount = 0;
+        this.carriedBoxes = new ArrayList<>();
     }
 
     public int getID(){
@@ -64,12 +66,24 @@ public class Vehicle {
         this.currentNode = node;
     }
 
-    public void setAvailability(boolean available){
-        this.availability = available;
+    public boolean isAvailable(double time) {
+        return capacity > carriedBoxesCount && time > unavailableUntil;
     }
 
-    public boolean isAvailable(double time) {
-        return capacity > carriedBoxes && time >= unavailableUntil;
+    public void setUnavailableUntil(double time){
+        this.unavailableUntil = time;
     }
+    
     // Getters and setters
+    public boolean removeBox(String boxId){
+        if (carriedBoxes.contains(boxId)){
+            carriedBoxesCount--;
+            return carriedBoxes.remove(boxId);
+        }
+        return false;
+    }
+    public void addBox(String boxId){
+        this.carriedBoxes.add(boxId);
+        this.carriedBoxesCount++;
+    }
 }
