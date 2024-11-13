@@ -34,7 +34,9 @@ public class DataReader {
             for (Map<String, Object> Jobject : Jstacks) {
                 Stack stack = new Stack(new JSONObject(Jobject), stackCapacity);
                 Location location = new Location((int) Jobject.get("x"), (int) Jobject.get("y"));
-                graph.addNode(new GraphNode(stack, location));
+                GraphNode node = new GraphNode(stack, location);
+                graph.addNode(node);
+                nodeMap.put(node.getName(), node);
             }
 
             for (Map<String, Object> Jobject : Jbufferpoints) {
@@ -53,16 +55,18 @@ public class DataReader {
             List<Request> requests = new ArrayList<>();
             for (Map<String, Object> Jobject : Jrequests) {
                 GraphNode pickupLocation, placeLocation;
+                JSONObject R_object = new JSONObject(Jobject);
+                // System.out.println(R_object.getJSONArray("pickupLocation").getString(0)+"  "+R_object.getJSONArray("placeLocation").getString(0));
                 try{
-                    pickupLocation = nodeMap.get(object.getJSONArray("pickupLocation").getString(0));
-                    placeLocation = nodeMap.get(object.getJSONArray("placeLocation").getString(0));
+                    pickupLocation = nodeMap.get(R_object.getJSONArray("pickupLocation").getString(0));
+                    placeLocation = nodeMap.get(R_object.getJSONArray("placeLocation").getString(0));
                 } catch (JSONException e){
-                    pickupLocation = nodeMap.get(object.getString("pickupLocation"));
-                    placeLocation = nodeMap.get(object.getString("placeLocation"));
+                    pickupLocation = nodeMap.get(R_object.getString("pickupLocation"));
+                    placeLocation = nodeMap.get(R_object.getString("placeLocation"));
                 }
 
-                int ID = object.getInt("ID");
-                String boxID = object.getString("boxID");
+                int ID = R_object.getInt("ID");
+                String boxID = R_object.getString("boxID");
                 requests.add(new Request(pickupLocation, placeLocation, ID, boxID));
                 //requests.add(new Request(new JSONObject(Jobject)));
             }

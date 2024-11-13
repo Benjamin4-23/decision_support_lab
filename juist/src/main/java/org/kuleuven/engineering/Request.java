@@ -1,7 +1,5 @@
 package org.kuleuven.engineering;
 
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.kuleuven.engineering.graph.GraphNode;
 
 public class Request {
@@ -9,8 +7,9 @@ public class Request {
     private GraphNode pickupLocation;
     private GraphNode placeLocation;
     private final String boxID;
-    private String assignedVehicle = "";
+    private int assignedVehicle = -1;
     private REQUEST_STATUS status = REQUEST_STATUS.INITIAL;
+    private boolean done = false;
 
     public Request(GraphNode pickup, GraphNode place, int ID, String boxID) {
         this.ID = ID;
@@ -35,11 +34,11 @@ public class Request {
         return ID;
     }
 
-    public String getAssignedVehicle() {
+    public int getAssignedVehicle() {
         return assignedVehicle;
     }
 
-    public void setAssignedVehicle(String vehicle) {
+    public void setAssignedVehicle(int vehicle) {
         this.assignedVehicle = vehicle;
     }
 
@@ -51,5 +50,11 @@ public class Request {
         this.status = status;
     }
 
+    public boolean isDone() {
+        return done;
+    }
 
+    public void setDone(boolean done) {
+        this.done = done;
+    }
 }

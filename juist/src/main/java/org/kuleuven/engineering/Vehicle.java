@@ -14,7 +14,7 @@ public class Vehicle {
     private Location location;
     private int currentRequestID = -1;
     public GraphNode currentNode = null;
-    double unavailableUntil = 0;
+    double unavailableUntil = -1;
     public Queue<Event> eventQueue = new ArrayDeque<>();
     private ArrayList<String> carriedBoxes;
     private int carriedBoxesCount;
@@ -67,7 +67,7 @@ public class Vehicle {
     }
 
     public boolean isAvailable(double time) {
-        return capacity > carriedBoxesCount && time > unavailableUntil;
+        return time > unavailableUntil;
     }
 
     public void setUnavailableUntil(double time){
@@ -80,10 +80,13 @@ public class Vehicle {
             carriedBoxesCount--;
             return carriedBoxes.remove(boxId);
         }
-        return false;
+        throw new RuntimeException("Box not found in vehicle at time of placement");
     }
     public void addBox(String boxId){
         this.carriedBoxes.add(boxId);
         this.carriedBoxesCount++;
+        if (carriedBoxesCount > capacity){
+            throw new RuntimeException("Vehicle capacity exceeded");
+        }
     }
 }
