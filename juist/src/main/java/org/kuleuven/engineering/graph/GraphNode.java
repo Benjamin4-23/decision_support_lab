@@ -20,11 +20,7 @@ public class GraphNode {
     public GraphNode(IStorage storage, Location location){
         this.location = location;
         this.storage = storage;
-        if(storage instanceof Bufferpoint){
-            isBuffer = true;
-        } else {
-            isBuffer = false;
-        }
+        this.isBuffer = storage instanceof Bufferpoint;
     }
     public String getName() {
         return storage.getName();

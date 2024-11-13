@@ -1,5 +1,6 @@
 package org.kuleuven.engineering;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Queue;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,7 +11,9 @@ public class Vehicle {
     private String name;
     private final int capacity;
     private Location location;
+    private int currentRequestID = -1;
     public GraphNode currentNode = null;
+    double unavailableUntil = 0;
     public Queue<Event> eventQueue = new ArrayDeque<>();
     private int carriedBoxes;
     private boolean availability = true;
@@ -38,6 +41,14 @@ public class Vehicle {
         return location;
     }
 
+    public int getCurrentRequestID(){
+        return currentRequestID;
+    }
+    
+    public void setCurrentRequestID(int id){
+        this.currentRequestID = id;
+    }
+
     public void moveTo(double targetX, double targetY) {
         // Implement movement logic
         this.location.setX((int) targetX);
@@ -57,8 +68,8 @@ public class Vehicle {
         this.availability = available;
     }
 
-    public boolean isAvailable() {
-        return capacity > carriedBoxes && this.availability;
+    public boolean isAvailable(double time) {
+        return capacity > carriedBoxes && time >= unavailableUntil;
     }
     // Getters and setters
 }

@@ -8,6 +8,8 @@ public class Request {
     private String pickupLocation;
     private String placeLocation;
     private final String boxID;
+    private String assignedVehicle = "";
+    private String status = "initial";
 
     public Request(JSONObject object) {
         try{
@@ -36,5 +38,13 @@ public class Request {
 
     public int getID() {
         return ID;
+    }
+
+    public String getAssignedVehicle() {
+        return assignedVehicle;
+    }
+
+    public void setAssignedVehicle(String vehicle) {
+        this.assignedVehicle = vehicle;
     }
 }
