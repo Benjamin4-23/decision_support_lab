@@ -98,12 +98,12 @@ public class Warehouse {
 
             // als dest een stack is en full, dan moet er gerelocate worden
 
-
-            if (startLocation != graph.nodeMap.get(request.getPickupLocation()).getLocation()){
-                timeAfterMove += graph.getTravelTime(vehicle, graph.nodeMap.get(request.getPickupLocation()));
-                vehicle.moveTo(graph.nodeMap.get(request.getPickupLocation()));
+            GraphNode src = request.getPickupLocation();
+            if (startLocation != src.getLocation()){
+                timeAfterMove += graph.getTravelTime(vehicle, src);
+                vehicle.moveTo(src);
             }
-            String box = ((Stack)graph.nodeMap.get(request.getPickupLocation()).getStorage()).removeBox();
+            String box = ((Stack)src.getStorage()).removeBox();
             vehicle.addBox(box);
             timeAfterOperation = timeAfterMove + loadingSpeed;
             addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, request.getBoxID(), REQUEST_STATUS.SRC);
