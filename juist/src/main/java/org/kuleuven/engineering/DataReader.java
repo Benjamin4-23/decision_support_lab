@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
@@ -27,6 +29,7 @@ public class DataReader {
             List<Map<String, Object>> Jrequests = JsonParser.toList(object.getJSONArray("requests"));
 
             Graph graph = new Graph(vehicleSpeed);
+            HashMap<String, GraphNode> nodeMap = new HashMap<>();
 
             for (Map<String, Object> Jobject : Jstacks) {
                 Stack stack = new Stack(new JSONObject(Jobject), stackCapacity);
@@ -37,7 +40,9 @@ public class DataReader {
             for (Map<String, Object> Jobject : Jbufferpoints) {
                 Bufferpoint bufferpoint = new Bufferpoint(new JSONObject(Jobject));
                 Location location = new Location((int) Jobject.get("x"), (int) Jobject.get("y"));
-                graph.addNode(new GraphNode(bufferpoint, location));
+                GraphNode node = new GraphNode(bufferpoint, location);
+                graph.addNode(node);
+                nodeMap.put(node.getName(), node);
             }
 
             List<Vehicle> vehicles = new ArrayList<>();
@@ -47,7 +52,19 @@ public class DataReader {
 
             List<Request> requests = new ArrayList<>();
             for (Map<String, Object> Jobject : Jrequests) {
-                requests.add(new Request(new JSONObject(Jobject)));
+                GraphNode pickupLocation, placeLocation;
+                try{
+                    pickupLocation = nodeMap.get(object.getJSONArray("pickupLocation").getString(0));
+                    placeLocation = nodeMap.get(object.getJSONArray("placeLocation").getString(0));
+                } catch (JSONException e){
+                    pickupLocation = nodeMap.get(object.getString("pickupLocation"));
+                    placeLocation = nodeMap.get(object.getString("placeLocation"));
+                }
+
+                int ID = object.getInt("ID");
+                String boxID = object.getString("boxID");
+                requests.add(new Request(pickupLocation, placeLocation, ID, boxID));
+                //requests.add(new Request(new JSONObject(Jobject)));
             }
 
             return new Warehouse(graph, vehicles, requests, loadingDuration);

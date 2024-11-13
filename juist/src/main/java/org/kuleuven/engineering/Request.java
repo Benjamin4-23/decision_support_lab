@@ -2,33 +2,28 @@ package org.kuleuven.engineering;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.kuleuven.engineering.graph.GraphNode;
 
 public class Request {
     private final int ID;
-    private String pickupLocation;
-    private String placeLocation;
+    private GraphNode pickupLocation;
+    private GraphNode placeLocation;
     private final String boxID;
     private String assignedVehicle = "";
     private REQUEST_STATUS status = REQUEST_STATUS.INITIAL;
 
-    public Request(JSONObject object) {
-        try{
-            pickupLocation = object.getJSONArray("pickupLocation").getString(0);
-            placeLocation = object.getJSONArray("placeLocation").getString(0);
-        } catch (JSONException e){
-            pickupLocation = object.getString("pickupLocation");
-            placeLocation = object.getString("placeLocation");
-        }
-
-        ID = object.getInt("ID");
-        boxID = object.getString("boxID");
+    public Request(GraphNode pickup, GraphNode place, int ID, String boxID) {
+        this.ID = ID;
+        this.boxID = boxID;
+        this.pickupLocation = pickup;
+        this.placeLocation = place;
     }
 
-    public String getPickupLocation() {
+    public GraphNode getPickupLocation() {
         return pickupLocation;
     }
 
-    public String getPlaceLocation() {
+    public GraphNode getPlaceLocation() {
         return placeLocation;
     }
 
