@@ -64,7 +64,7 @@ public class Warehouse {
             double minTime2 = Double.MAX_VALUE;
 
             for (Vehicle vehicle : vehicles) {
-                if (vehicle.isAvailable()) {
+                if (vehicle.isAvailable(currentTime)) {
                     double time1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
                     double time2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
 
@@ -106,27 +106,27 @@ public class Warehouse {
 
         Location startLocation = vehicle.getLocation();
 
-        if (request.getStatus().equals("initial")){
+        if (request.getStatus() == Request.REQUEST_STATUS.INITIAL){
             // move naar src en PU na beweegtijd+loadingSpeed als dest stack is vrij of dest is buffer, anders naar dest en die vrijmaken
             // voeg log toe
             // status wordt "at src"
         }
-        if (request.getStatus().equals("at src")){
+        if (request.getStatus() == Request.REQUEST_STATUS.SRC){
             // kijken of relocation nodig, dan move to temp stack en PL, anders naar dest en PL
             // voeg log toe
             // status wordt "at src relocation" of "at dest"
         }
-        if (request.getStatus().equals("at src relocation")){
+        if (request.getStatus() == Request.REQUEST_STATUS.SRC_RELOC){
             // move terug naar src en PU
             // voeg log toe
             // status wordt "at src"
         }
-        if (request.getStatus().equals("at dest")){
+        if (request.getStatus() == Request.REQUEST_STATUS.DEST){
             // kijken of relocation nodig, dan move to dest en PL, anders naar dest en PL
             // voeg log toe
             // status wordt "at dest relocation" of "at dest"
         }
-        if (request.getStatus().equals("at dest relocation")){
+        if (request.getStatus() == Request.REQUEST_STATUS.DEST_RELOC){
             // move terug naar dest en PL
             // voeg log toe
             // status wordt "at dest"
@@ -271,7 +271,7 @@ public class Warehouse {
         }
     }
 
-    private void processEvent(Vehicle vehicle, double time){
+    /*private void processEvent(Vehicle vehicle, double time){
         if(vehicle.eventQueue.isEmpty()) {
             vehicle.setAvailability(true);
             return;
@@ -324,7 +324,7 @@ public class Warehouse {
         String logEntry = String.format("%s;%d;%d;%.0f;%d;%d;%.0f;%s;%s",
                 vehicle.getName(), startX, startY, startTime, endX, endY, endTime, boxID, operation);
         operationLog.add(logEntry);
-    }
+    }*/
 
     public void printOperationLog() {
         for (String logEntry : operationLog) {

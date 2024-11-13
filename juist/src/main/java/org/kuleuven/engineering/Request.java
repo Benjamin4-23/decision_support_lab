@@ -9,7 +9,7 @@ public class Request {
     private String placeLocation;
     private final String boxID;
     private String assignedVehicle = "";
-    private String status = "initial";
+    private REQUEST_STATUS status = REQUEST_STATUS.INITIAL;
 
     public Request(JSONObject object) {
         try{
@@ -48,11 +48,19 @@ public class Request {
         this.assignedVehicle = vehicle;
     }
 
-    public String getStatus() {
+    public REQUEST_STATUS getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(REQUEST_STATUS status) {
         this.status = status;
+    }
+
+    public enum REQUEST_STATUS{
+        INITIAL,
+        SRC,
+        SRC_RELOC,
+        DEST,
+        DEST_RELOC
     }
 }
