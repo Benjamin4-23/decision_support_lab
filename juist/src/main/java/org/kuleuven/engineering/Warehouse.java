@@ -108,6 +108,8 @@ public class Warehouse {
             timeAfterOperation = timeAfterMove + loadingSpeed;
             addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, request.getBoxID(), REQUEST_STATUS.SRC);
             vehicle.setUnavailableUntil(timeAfterOperation);
+
+            src.setUnavailableUntil(timeAfterOperation);
         }
         if (request.getStatus() == REQUEST_STATUS.SRC){
             // kijken of relocation nodig, dan move to temp stack en PL, anders naar dest en PL
@@ -225,7 +227,7 @@ public class Warehouse {
             if(node == src || node == dest){
                 continue;
             }
-            if(node.getStorage() instanceof Stack stack && !stack.isFull() && !node.isLocked()){
+            if(node.getStorage() instanceof Stack stack && !stack.isFull()){
                 nodes.add(node);
                 i += stack.getFreeSpace();
                 if(i>=N){

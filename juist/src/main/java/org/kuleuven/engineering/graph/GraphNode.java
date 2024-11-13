@@ -8,7 +8,7 @@ public class GraphNode {
     private boolean isBuffer;
     IStorage storage;
     private final Location location;
-    private int locks = 0;
+    private double unavailableTime = -1;
 
     public GraphNode(Location location) { // demo constructor voor vehicle object als node mee te geven
         this.location = location;
@@ -38,17 +38,12 @@ public class GraphNode {
         return storage;
     }
 
-    public void lock(){
-        locks++;
+    public void setUnavailableUntil(double time){
+        unavailableTime = time;
     }
 
-    public void unlock(){
-        if(locks <= 0) return;
-        locks--;
-    }
-
-    public boolean isLocked(){
-        return locks > 0;
+    public boolean isAvailable(double time){
+        return time > unavailableTime;
     }
 
 }
