@@ -1,7 +1,5 @@
 package org.kuleuven.engineering;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 import org.json.JSONArray;
@@ -65,6 +63,18 @@ public class Stack implements IStorage {
 
     public int getCapacity() {
         return capacity;
+    }
+
+    public int getBoxesSize() {
+        return boxes.size();
+    }
+    
+    public String peakAtDepth(int depth) {
+        //return id of box at depth
+        if (depth > boxes.size()) {
+            return "";
+        }
+        return boxes.get(boxes.size() - depth - 1);
     }
 
     public Object getBoxes() {

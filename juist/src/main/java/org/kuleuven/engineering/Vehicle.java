@@ -51,6 +51,13 @@ public class Vehicle {
         this.currentRequestID = id;
     }
 
+    public int getCarriedBoxesCount(){
+        return carriedBoxesCount;
+    }
+    public int getCapacity(){
+        return capacity;
+    }
+
     public void moveTo(double targetX, double targetY) {
         // Implement movement logic
         this.location.setX((int) targetX);
@@ -80,7 +87,8 @@ public class Vehicle {
             carriedBoxesCount--;
             return carriedBoxes.remove(boxId);
         }
-        throw new RuntimeException("Box not found in vehicle at time of placement");
+        System.out.println("Box not found in vehicle at time of removal");
+        return false;
     }
     public void addBox(String boxId){
         this.carriedBoxes.add(boxId);
@@ -88,5 +96,12 @@ public class Vehicle {
         if (carriedBoxesCount > capacity){
             throw new RuntimeException("Vehicle capacity exceeded");
         }
+    }
+
+    public boolean hasBox(String boxId){
+        return carriedBoxes.contains(boxId);
+    }
+    public String getLastBox(){
+        return carriedBoxes.get(carriedBoxes.size() - 1);
     }
 }
