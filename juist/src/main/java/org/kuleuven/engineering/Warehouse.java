@@ -192,22 +192,6 @@ public class Warehouse {
                         }
                     }
 
-                    // if(vehicle.isAvailable(currentTime) && openRequests.size() < vehicles.size() && !requestsCopy.isEmpty()){
-                    //     //beste request toevoegen voor vrij vehicle
-                    //     Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
-                    //         GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
-                    //         GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
-                    //         double minTime1 = Double.MAX_VALUE;
-                    //         double minTime2 = Double.MAX_VALUE;
-                    //         double time1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
-                    //         double time2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
-                    //         minTime1 = Math.min(minTime1, time1);
-                    //         minTime2 = Math.min(minTime2, time2);
-                    //         return Double.compare(minTime1, minTime2);
-                    //     });
-                    //     requestQueue.addAll(requestsCopy);
-                    //     openRequests.add(requestQueue.poll());
-                    // }
                 }
                 currentTime++;
             }
@@ -235,7 +219,7 @@ public class Warehouse {
                 vehicle.moveTo(dest);
                 String box = stack.removeBox();
                 vehicle.addBox(box);
-                addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, box, REQUEST_STATUS.DEST_PU);
+                addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.DEST_PU);
                 request.setStatus(REQUEST_STATUS.DEST_PU);
                 return true;
             }
@@ -278,7 +262,7 @@ public class Warehouse {
             if (!vehicle.hasBox(request.getBoxID())){
                 String box = vehicle.getLastBox();
                 // move to temp stack
-                List<GraphNode> tempStacks = findNStorage(1, request.getPickupLocation(), request.getPlaceLocation());
+                List<GraphNode> tempStacks = findNStorage(1, request.getPickupLocation(), request.getPlaceLocation(), request.getStatus());
                 if (tempStacks.isEmpty()){
                     System.out.println("No temp stack found");
                 }
@@ -319,9 +303,7 @@ public class Warehouse {
             }
             // als hier geraakt dan kan hij naar dest en PL doen
             vehicle.setUnavailableUntil(timeAfterOperation);
-            // System.out.println("vehicle moved from " + vehicle.getLocation().toString());
             vehicle.moveTo(dest);
-            // System.out.println("vehicle moved to " + dest.getLocation().toString());
             if (dest.getStorage() instanceof Stack){
                 ((Stack)dest.getStorage()).addBox(request.getBoxID());
             }
@@ -331,7 +313,6 @@ public class Warehouse {
             vehicle.removeBox(request.getBoxID());
             addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, request.getBoxID(), REQUEST_STATUS.DEST);
             request.setStatus(REQUEST_STATUS.DEST);
-            request.setDone(true);
             return true;
         }
 
@@ -356,7 +337,7 @@ public class Warehouse {
                 // box = ((Bufferpoint)src.getStorage()).removeBox();
                 vehicle.addBox(request.getBoxID());
             }
-            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, request.getBoxID(), REQUEST_STATUS.SRC);
+            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.SRC);
             request.setStatus(REQUEST_STATUS.SRC);
             return true;
         }
@@ -365,7 +346,7 @@ public class Warehouse {
         
         if (request.getStatus() == REQUEST_STATUS.DEST_PU){
             String box = vehicle.getLastBox();
-            List<GraphNode> tempStacks = findNStorage(1, request.getPickupLocation(), request.getPlaceLocation());
+            List<GraphNode> tempStacks = findNStorage(1, request.getPickupLocation(), request.getPlaceLocation(), request.getStatus());
             if (tempStacks.isEmpty()){
                 System.out.println("No temp stack found");
             }
@@ -388,11 +369,46 @@ public class Warehouse {
 
         return false;
     }
-    private List<GraphNode> findNStorage(int N, GraphNode src, GraphNode dest){
+    private List<GraphNode> findNStorage(int N, GraphNode src, GraphNode dest, REQUEST_STATUS status){
         if(N == 0) return null;
+
+        // zoek naar stack die niet meer in requests voorkomt
+        List<GraphNode> requestStacks = new ArrayList<>();
+        for (Request request : requests){
+            if (request.getPickupLocation().getStorage() instanceof Stack){
+                requestStacks.add(request.getPickupLocation());
+            }
+            if (request.getPlaceLocation().getStorage() instanceof Stack){
+                requestStacks.add(request.getPlaceLocation());
+            }
+        }
         List<GraphNode> nodes = new ArrayList<>();
         int i = 0;
         for (GraphNode node : graph.getNodes()){
+            if(node == src || node == dest || requestStacks.contains(node)){
+                continue;
+            }
+            if(node.getStorage() instanceof Stack stack && !stack.isFull()){
+                nodes.add(node);
+                i += stack.getFreeSpace();
+                if(i>=N){
+                    return nodes;
+                }
+            }
+        }
+        if(i>=N){
+            return nodes;
+        }
+        
+        
+        //ander vul aan tot N met dichtstbijzijnde stacks (dichtstbijzijnde bij src of dest afhankelijk van status)
+        PriorityQueue<GraphNode> nodesByDistance = new PriorityQueue<>((node1, node2) -> {
+            double distance1 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node1.getLocation()) : graph.calculateTime(dest.getLocation(), node1.getLocation());
+            double distance2 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node2.getLocation()) : graph.calculateTime(dest.getLocation(), node2.getLocation());
+            return Double.compare(distance1, distance2);
+        });
+        nodesByDistance.addAll(graph.getNodes());
+        for (GraphNode node : nodesByDistance){
             if(node == src || node == dest){
                 continue;
             }
@@ -405,6 +421,8 @@ public class Warehouse {
             }
         }
 
+        
+
         if(i<N){
             return null;
         }
@@ -412,60 +430,6 @@ public class Warehouse {
     }
 
 
-    /*private void processEvent(Vehicle vehicle, double time){
-        if(vehicle.eventQueue.isEmpty()) {
-            vehicle.setAvailability(true);
-            return;
-        }
-
-        Event event = vehicle.eventQueue.peek();
-        GraphNode destNode = graph.nodeMap.get(event.location);
-        GraphNode srcNode = boxLocationMap.get(event.boxId);
-        double vehicleTime = 0;
-
-        if(event.type ==  Event.EventType.RELOCATE || event.type == Event.EventType.PICK_UP){
-            //src node is null in relocate return
-            assert srcNode != null;
-            if(!srcNode.isBuffer()){
-                String box = ((Stack)srcNode.getStorage()).removeBox();
-                assert Objects.equals(box, event.boxId);
-            }
-            boxLocationMap.remove(event.boxId);
-
-            if(vehicle.getLocation() != srcNode.getLocation()){
-                vehicleTime += graph.getTravelTime(vehicle, srcNode);
-                vehicle.moveTo(srcNode);
-            }
-        }
-
-        vehicleTime += graph.getTravelTime(vehicle, destNode);
-        if(vehicleTime > 0){
-            vehicle.moveTo(destNode);
-        }
-        switch (event.type){
-            case PLACE, PICK_UP ->{
-                vehicleTime += loadingSpeed;
-            }
-            case RELOCATE -> {
-                vehicleTime += loadingSpeed * 2;
-            }
-            case RELOCATE_RETURN -> {
-            }
-        }
-        event.setStartTime(time);
-        event.setTimer(time + vehicleTime);
-        runningEvents++;
-    }
-
-    private void logOperation(Vehicle vehicle, Location startLocation , double startTime, Location endLocation, double endTime, String boxID, String operation) {
-        int startX = startLocation.getX();
-        int startY = startLocation.getY();
-        int endX = endLocation.getX();
-        int endY = endLocation.getY();
-        String logEntry = String.format("%s;%d;%d;%.0f;%d;%d;%.0f;%s;%s",
-                vehicle.getName(), startX, startY, startTime, endX, endY, endTime, boxID, operation);
-        operationLog.add(logEntry);
-    }*/
 
     public void addLogEntry(String vehicleName, Location startLocation, double startTime, Location endLocation, double endTime, String boxId, REQUEST_STATUS type){
         String operation = switch (type){

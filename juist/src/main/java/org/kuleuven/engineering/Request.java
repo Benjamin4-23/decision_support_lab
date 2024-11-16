@@ -51,10 +51,7 @@ public class Request {
     }
 
     public boolean isDone() {
-        return done;
+        return this.status == REQUEST_STATUS.DEST;
     }
 
-    public void setDone(boolean done) {
-        this.done = done;
-    }
 }
