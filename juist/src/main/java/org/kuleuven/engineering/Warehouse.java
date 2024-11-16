@@ -56,9 +56,7 @@ public class Warehouse {
 
     public void scheduleRequests() {
         List<Request> requestsCopy = new ArrayList<>(requests);
-        //requests ordenen voor optimale volgorde voor eerste ronde evtl
-
-        // doe een ronde requests met dozen zonder relocation
+        // doe een ronde requests met topdozen die naar buffer moeten
         if (true) {
             // zoek requests met topdozen en de dozen op plek onder die request die ook opgehaald moeten worden voor naar buffer te gaan
             List<Request> requestsWithoutRelocation = new ArrayList<>();
@@ -95,10 +93,9 @@ public class Warehouse {
                 double time2 = graph.calculateTime(boxLocation2.getLocation(), vehicles.get(0).getLocation());
                 minTime1 = Math.min(minTime1, time1);
                 minTime2 = Math.min(minTime2, time2);
-                return (minTime1 - minTime2) > 0 ? 1 : -1;
+                return (minTime1 > minTime2) ? 1 : -1;
             });
             requestQueueWithoutRelocation.addAll(requestsWithoutRelocation);
-
 
             // ga naar eerste locatie, check of nog plaats op vehicle, dan naar andere pickup, als vol naar buffer
             // enkel met eerste vehicle
@@ -145,7 +142,7 @@ public class Warehouse {
 
         }
         
-        // daarna werk de rest 1 voor 1 af
+        // daarna werk de rest 1 voor 1 af (eerst stack -> buffer requests based on depth, dan buffer -> stack requests met letten op eindlocaties)
         if (true) {
             requestsCopy = new ArrayList<>(requests);
             while (!requestsCopy.isEmpty() || !openRequests.isEmpty()) {      /// aanpassen voor meerdere vehicles dat relocations niet tegenwerken
@@ -158,6 +155,7 @@ public class Warehouse {
                         }
 
                         // als vehicle available maar geen request, geef hem een nieuwe request
+                        // sorteer requests op distance tot vehicle
                         if(vehicle.getCurrentRequestID() == -1){
                             Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
                                 GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
@@ -171,7 +169,45 @@ public class Warehouse {
                                 return Double.compare(minTime1, minTime2);
                             });
                             requestQueue.addAll(requestsCopy);
-                            openRequests.add(requestQueue.poll());
+
+                            // maak list voor stack -> buffer requests
+                            List<Request> requestsStackToBuffer = new ArrayList<>();
+                            for (Request request : requestQueue){
+                                if (request.getPickupLocation().getStorage() instanceof Stack && request.getPlaceLocation().isBuffer()){
+                                    requestsStackToBuffer.add(request);
+                                }
+                            }
+                            // sorteer requests die van stack naar buffer moeten op diepte in stack om eerst requests van hogere dozen af te werken
+                            List<Request> requestListStackToBuffer = new ArrayList<>(requestsStackToBuffer);
+                            requestListStackToBuffer.sort((r1, r2) -> {
+                                if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
+                                    return Integer.compare(stack1.getDepthOfBox(r1.getBoxID()), stack2.getDepthOfBox(r2.getBoxID()));
+                                }
+                                return 0;
+                            });
+
+                            // Debug: Print the sorted list
+                            // System.out.println("Sorted request list:");
+                            // for (Request request : requestListStackToBuffer) {
+                            //     System.out.println("Box ID: " + request.getBoxID() + ", Depth: " + ((Stack)request.getPickupLocation().getStorage()).getDepthOfBox(request.getBoxID()));
+                            // }
+
+                            // maak list voor buffer -> stack requests
+                            List<Request> requestsBufferToStack = new ArrayList<>();
+                            for (Request request : requestQueue){
+                                if (request.getPickupLocation().isBuffer() && request.getPlaceLocation().getStorage() instanceof Stack){
+                                    requestsBufferToStack.add(request);
+                                }
+                            }
+
+                            // voeg beide soorten toe aan nieuwe list
+                            List<Request> requestList = new ArrayList<>();
+                            requestList.addAll(requestListStackToBuffer);
+                            requestList.addAll(requestsBufferToStack);
+
+
+                            //van juiste queue pak een request!!! -----------------------------------------------------
+                            openRequests.add(requestList.remove(0));
                             for (Request request : openRequests){
                                 if(request.getAssignedVehicle() == -1) {
                                     request.setAssignedVehicle(vehicle.getID());
@@ -258,8 +294,8 @@ public class Warehouse {
 
         
         if (request.getStatus() == REQUEST_STATUS.SRC){
-            // kijken of relocation nodig, dan move to temp stack en PL, status wordt "at src relocation" 
-            if (!vehicle.hasBox(request.getBoxID())){
+            // kijken of relocation nodig (we hebben box niet op vehicle), onderscheid tussen full en niet full vehicle
+            if (!vehicle.hasBox(request.getBoxID()) && vehicle.getCapacity() == vehicle.getCarriedBoxesCount()){
                 String box = vehicle.getLastBox();
                 // move to temp stack
                 List<GraphNode> tempStacks = findNStorage(1, request.getPickupLocation(), request.getPlaceLocation(), request.getStatus());
@@ -283,6 +319,25 @@ public class Warehouse {
                 vehicle.removeBox(box);
                 addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, box, REQUEST_STATUS.SRC_RELOC);
                 request.setStatus(REQUEST_STATUS.SRC_RELOC);
+                return true;
+            }
+            if (!vehicle.hasBox(request.getBoxID()) && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
+                // probeer nog 1 op te nemen
+                timeAfterOperation = timeAfterMove + loadingSpeed;
+                if (!vehicle.getCurrentNode().checkAndSetAvailable(time, timeAfterMove, timeAfterOperation)){
+                    return false;
+                }
+                vehicle.setUnavailableUntil(timeAfterOperation);
+                String box = "";
+                if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
+                    box = stack.removeBox();
+                    vehicle.addBox(box);
+                }
+                else{
+                    // box = ((Bufferpoint)src.getStorage()).removeBox();
+                    vehicle.addBox(request.getBoxID());
+                }
+                addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.SRC);
                 return true;
             }
 
@@ -317,6 +372,23 @@ public class Warehouse {
         }
 
         if (request.getStatus() == REQUEST_STATUS.SRC_RELOC){
+            // als vehicle nog niet leeg drop zoveel mogelijk boxes
+            if (vehicle.getCarriedBoxesCount() > 0 && vehicle.getCurrentNode().getStorage() instanceof Stack stack){
+                if (stack.getFreeSpace() != 0){
+                    String box = vehicle.getLastBox();
+                    timeAfterOperation = timeAfterMove + loadingSpeed;
+                    if (!vehicle.getCurrentNode().checkAndSetAvailable(time, timeAfterMove, timeAfterOperation)){
+                        return false;
+                    }
+                    vehicle.setUnavailableUntil(timeAfterOperation);
+                    stack.addBox(box);
+                    vehicle.removeBox(box);
+                    addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, box, REQUEST_STATUS.SRC_RELOC);
+                    return true;
+                }
+            }
+
+
             // move terug naar src en PU
             GraphNode src = request.getPickupLocation();
             if (startLocation != src.getLocation()){
@@ -369,6 +441,8 @@ public class Warehouse {
 
         return false;
     }
+
+
     private List<GraphNode> findNStorage(int N, GraphNode src, GraphNode dest, REQUEST_STATUS status){
         if(N == 0) return null;
 
@@ -428,8 +502,6 @@ public class Warehouse {
         }
         return nodes;
     }
-
-
 
     public void addLogEntry(String vehicleName, Location startLocation, double startTime, Location endLocation, double endTime, String boxId, REQUEST_STATUS type){
         String operation = switch (type){

@@ -77,6 +77,10 @@ public class Stack implements IStorage {
         return boxes.get(boxes.size() - depth - 1);
     }
 
+    public int getDepthOfBox(String boxID) {
+        return boxes.search(boxID);
+    }
+
     public Object getBoxes() {
         return boxes.clone();
     }

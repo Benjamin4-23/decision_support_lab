@@ -58,6 +58,10 @@ public class Vehicle {
         return capacity;
     }
 
+    public GraphNode getCurrentNode(){
+        return currentNode;
+    }
+
     public void moveTo(double targetX, double targetY) {
         // Implement movement logic
         this.location.setX((int) targetX);
