@@ -104,7 +104,7 @@ public class Warehouse {
                 if (!requestQueueWithoutRelocation.isEmpty() && vehicles.get(0).isAvailable(currentTime) && !firsGetAnother && vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestsWithoutRelocation.isEmpty()){
                     Request request = requestQueueWithoutRelocation.poll();
                     requestsWithoutRelocationOpen.add(request);
-                    handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0);
+                    handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0, false);
                     if (vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestQueueWithoutRelocation.isEmpty()){
                         firsGetAnother = true;
                     }
@@ -112,7 +112,7 @@ public class Warehouse {
                 else if (!requestQueueWithoutRelocation.isEmpty() && vehicles.get(0).isAvailable(currentTime) && firsGetAnother){
                     Request request = requestQueueWithoutRelocation.poll();
                     requestsWithoutRelocationOpen.add(request);
-                    handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0);
+                    handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0, false);
                     if (vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestQueueWithoutRelocation.isEmpty()){
                         firsGetAnother = true;
                     }
@@ -127,7 +127,7 @@ public class Warehouse {
                         Request request = requestsWithoutRelocationOpen.remove(0);
                         while (!request.isDone()){
                             if (vehicles.get(0).isAvailable(currentTime)){
-                                handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0);
+                                handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0, false);
                             }
                             currentTime++;
                         }
@@ -142,11 +142,21 @@ public class Warehouse {
 
         }
         
-        // daarna werk de rest 1 voor 1 af (eerst stack -> buffer requests based on depth, dan buffer -> stack requests met letten op eindlocaties)
+        // daarna werk de rest 1 voor 1 af (eerst stack -> buffer requests based on depth)
         if (true) {
-            requestsCopy = new ArrayList<>(requests);
-            while (!requestsCopy.isEmpty() || !openRequests.isEmpty()) {      /// aanpassen voor meerdere vehicles dat relocations niet tegenwerken
-                requestsCopy = new ArrayList<>(requests);
+            requestsCopy = new ArrayList<>();
+            for (Request request : requests){
+                if (request.getPickupLocation().getStorage() instanceof Stack && request.getPlaceLocation().isBuffer()){
+                    requestsCopy.add(request);
+                }
+            }
+            while (!requestsCopy.isEmpty() || !openRequests.isEmpty()) {  
+                requestsCopy = new ArrayList<>(); 
+                for (Request request : requests){
+                    if (request.getPickupLocation().getStorage() instanceof Stack && request.getPlaceLocation().isBuffer()){
+                        requestsCopy.add(request);
+                    }
+                }
                 for (Vehicle vehicle : vehicles){
                     if(vehicle.isAvailable(currentTime)) {
                         // is zijn huidige assigned request afgerond?
@@ -155,8 +165,8 @@ public class Warehouse {
                         }
 
                         // als vehicle available maar geen request, geef hem een nieuwe request
-                        // sorteer requests op distance tot vehicle
                         if(vehicle.getCurrentRequestID() == -1){
+                            // sorteer requests op distance tot vehicle
                             Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
                                 GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
                                 GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
@@ -169,45 +179,17 @@ public class Warehouse {
                                 return Double.compare(minTime1, minTime2);
                             });
                             requestQueue.addAll(requestsCopy);
-
-                            // maak list voor stack -> buffer requests
-                            List<Request> requestsStackToBuffer = new ArrayList<>();
-                            for (Request request : requestQueue){
-                                if (request.getPickupLocation().getStorage() instanceof Stack && request.getPlaceLocation().isBuffer()){
-                                    requestsStackToBuffer.add(request);
-                                }
-                            }
                             // sorteer requests die van stack naar buffer moeten op diepte in stack om eerst requests van hogere dozen af te werken
-                            List<Request> requestListStackToBuffer = new ArrayList<>(requestsStackToBuffer);
+                            List<Request> requestListStackToBuffer = new ArrayList<>(requestQueue);
                             requestListStackToBuffer.sort((r1, r2) -> {
                                 if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
                                     return Integer.compare(stack1.getDepthOfBox(r1.getBoxID()), stack2.getDepthOfBox(r2.getBoxID()));
                                 }
                                 return 0;
                             });
-
-                            // Debug: Print the sorted list
-                            // System.out.println("Sorted request list:");
-                            // for (Request request : requestListStackToBuffer) {
-                            //     System.out.println("Box ID: " + request.getBoxID() + ", Depth: " + ((Stack)request.getPickupLocation().getStorage()).getDepthOfBox(request.getBoxID()));
-                            // }
-
-                            // maak list voor buffer -> stack requests
-                            List<Request> requestsBufferToStack = new ArrayList<>();
-                            for (Request request : requestQueue){
-                                if (request.getPickupLocation().isBuffer() && request.getPlaceLocation().getStorage() instanceof Stack){
-                                    requestsBufferToStack.add(request);
-                                }
-                            }
-
-                            // voeg beide soorten toe aan nieuwe list
-                            List<Request> requestList = new ArrayList<>();
-                            requestList.addAll(requestListStackToBuffer);
-                            requestList.addAll(requestsBufferToStack);
-
-
+                            
                             //van juiste queue pak een request!!! -----------------------------------------------------
-                            openRequests.add(requestList.remove(0));
+                            openRequests.add(requestListStackToBuffer.remove(0));
                             for (Request request : openRequests){
                                 if(request.getAssignedVehicle() == -1) {
                                     request.setAssignedVehicle(vehicle.getID());
@@ -219,7 +201,7 @@ public class Warehouse {
 
                         // werk zijn assigned request af (probeer als niet locked, voorlopig anders niks doen)
                         if(vehicle.getCurrentRequestID() != -1){
-                            handleRequest(vehicle, openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0), currentTime > 0 ? currentTime-1 : 0);
+                            handleRequest(vehicle, openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0), currentTime > 0 ? currentTime-1 : 0, false);
                             Request request = openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0);
                             if (request.isDone()) {
                                 openRequests.remove(request);
@@ -227,20 +209,86 @@ public class Warehouse {
                             }
                         }
                     }
-
                 }
                 currentTime++;
             }
         }
+        
+        // dan buffer -> stack requests met letten op eindlocaties)
+        if (true) {
+            // maak list voor buffer -> stack requests
+            requestsCopy = new ArrayList<>();
+            for (Request request : requests){
+                if (request.getPickupLocation().isBuffer() && request.getPlaceLocation().getStorage() instanceof Stack){
+                    requestsCopy.add(request);
+                }
+            }
+            while (!requestsCopy.isEmpty() || !openRequests.isEmpty()) {  
+                requestsCopy = new ArrayList<>();
+                for (Request request : requests){
+                    if (request.getPickupLocation().isBuffer() && request.getPlaceLocation().getStorage() instanceof Stack){
+                        requestsCopy.add(request);
+                    }
+                }
+                for (Vehicle vehicle : vehicles){
+                    if(vehicle.isAvailable(currentTime)) {
+                        // is zijn huidige assigned request afgerond?
+                        if(vehicle.getCurrentRequestID() != -1 && openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().isEmpty()) {
+                            vehicle.setCurrentRequestID(-1);
+                        }
+
+                        // als vehicle available maar geen request, geef hem een nieuwe request
+                        if(vehicle.getCurrentRequestID() == -1){  // ordering niet nodig want alle requests starten in buffer
+                            openRequests.add(requestsCopy.remove(0));
+                            for (Request request : openRequests){
+                                if(request.getAssignedVehicle() == -1) {
+                                    request.setAssignedVehicle(vehicle.getID());
+                                    vehicle.setCurrentRequestID(request.getID());
+                                    break;
+                                }
+                            }
+                        }
+
+                        // werk zijn assigned request af (probeer als niet locked, voorlopig anders niks doen)
+                        if(vehicle.getCurrentRequestID() != -1){
+                            handleRequest(vehicle, openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0), currentTime > 0 ? currentTime-1 : 0, true);
+                            Request request = openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0);
+                            if (request.isDone()) {
+                                openRequests.remove(request);
+                                requests.remove(request);
+                            }
+                        }
+                    }
+                }
+                currentTime++;
+            }
+        }
+
     }
 
-    private boolean handleRequest(Vehicle vehicle, Request request, double time){
+    private boolean handleRequest(Vehicle vehicle, Request request, double time, boolean lastLoop){
         // System.out.println("handling request " + request.getID());
         Location startLocation = vehicle.getLocation();
         double timeAfterMove = time;
         double timeAfterOperation;
 
         if (request.getStatus() == REQUEST_STATUS.INITIAL){
+            // als het vehicle niet leeg is en bij een stack en we zitten in laatste loop, dan komen we vanuit dest relocation en proberen we vehicle zo veel mogelijk leeg te maken
+            if (vehicle.getCarriedBoxesCount() > 0 && vehicle.getCurrentNode().getStorage() instanceof Stack stack && lastLoop){
+                if (stack.getFreeSpace() != 0){
+                    String box = vehicle.getLastBox();
+                    timeAfterOperation = timeAfterMove + loadingSpeed;
+                    if (!vehicle.getCurrentNode().checkAndSetAvailable(time, timeAfterMove, timeAfterOperation)){
+                        return false;
+                    }
+                    vehicle.setUnavailableUntil(timeAfterOperation);
+                    stack.addBox(box);
+                    vehicle.removeBox(box);
+                    addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, box, REQUEST_STATUS.DEST_RELOC);
+                    return true;
+                }
+            }
+
             // als dest een stack is en full, dan moet er gerelocate worden
             GraphNode dest = request.getPlaceLocation();
             if (dest.getStorage() instanceof Stack stack && stack.isFull()){
@@ -422,7 +470,7 @@ public class Warehouse {
             if (tempStacks.isEmpty()){
                 System.out.println("No temp stack found");
             }
-            GraphNode tempStack = tempStacks.get(0); //voorlopig per 1 relocaten
+            GraphNode tempStack = tempStacks.get(0); //voorlopig per 1 relocaten dus remove niet nodig aangezien lijst niet meer nodig
             if (startLocation != tempStack.getLocation()){
                 timeAfterMove += graph.getTravelTime(vehicle, tempStack);
             }
@@ -445,60 +493,69 @@ public class Warehouse {
 
     private List<GraphNode> findNStorage(int N, GraphNode src, GraphNode dest, REQUEST_STATUS status){
         if(N == 0) return null;
-
-        // zoek naar stack die niet meer in requests voorkomt
-        List<GraphNode> requestStacks = new ArrayList<>();
-        for (Request request : requests){
-            if (request.getPickupLocation().getStorage() instanceof Stack){
-                requestStacks.add(request.getPickupLocation());
-            }
-            if (request.getPlaceLocation().getStorage() instanceof Stack){
-                requestStacks.add(request.getPlaceLocation());
-            }
-        }
         List<GraphNode> nodes = new ArrayList<>();
         int i = 0;
-        for (GraphNode node : graph.getNodes()){
-            if(node == src || node == dest || requestStacks.contains(node)){
-                continue;
-            }
-            if(node.getStorage() instanceof Stack stack && !stack.isFull()){
-                nodes.add(node);
-                i += stack.getFreeSpace();
-                if(i>=N){
-                    return nodes;
+
+        // zoek naar stack die niet meer in requests voorkomt
+        if (true) {
+            List<GraphNode> requestStacks = new ArrayList<>();
+            for (Request request : requests){
+                if (request.getPickupLocation().getStorage() instanceof Stack){
+                    requestStacks.add(request.getPickupLocation());
+                }
+                if (request.getPlaceLocation().getStorage() instanceof Stack){
+                    requestStacks.add(request.getPlaceLocation());
                 }
             }
+            PriorityQueue<GraphNode> nodesByDistance = new PriorityQueue<>((node1, node2) -> {
+                double distance1 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node1.getLocation()) : graph.calculateTime(dest.getLocation(), node1.getLocation());
+                double distance2 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node2.getLocation()) : graph.calculateTime(dest.getLocation(), node2.getLocation());
+                return Double.compare(distance1, distance2);
+            });
+            nodesByDistance.addAll(graph.getNodes());
+            for (GraphNode node : nodesByDistance){
+                if(node == src || node == dest || requestStacks.contains(node)){
+                    continue;
+                }
+                if(node.getStorage() instanceof Stack stack && !stack.isFull()){
+                    nodes.add(node);
+                    i += stack.getFreeSpace();
+                    if(i>=N){
+                        return nodes;
+                    }
+                }
+            }
+            if(i>=N){
+                return nodes;
+            }
         }
-        if(i>=N){
+        
+        
+        // anders vul aan tot N met dichtstbijzijnde stacks (dichtstbijzijnde bij src of dest afhankelijk van status)
+        if (true) {
+            PriorityQueue<GraphNode> nodesByDistance = new PriorityQueue<>((node1, node2) -> {
+                double distance1 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node1.getLocation()) : graph.calculateTime(dest.getLocation(), node1.getLocation());
+                double distance2 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node2.getLocation()) : graph.calculateTime(dest.getLocation(), node2.getLocation());
+                return Double.compare(distance1, distance2);
+            });
+            nodesByDistance.addAll(graph.getNodes());
+            for (GraphNode node : nodesByDistance){
+                if(node == src || node == dest){
+                    continue;
+                }
+                if(node.getStorage() instanceof Stack stack && !stack.isFull()){
+                    nodes.add(node);
+                    i += stack.getFreeSpace();
+                    if(i>=N){
+                        return nodes;
+                    }
+                }
+            }
+
+            if(i<N){
+                return null;
+            }
             return nodes;
-        }
-        
-        
-        //ander vul aan tot N met dichtstbijzijnde stacks (dichtstbijzijnde bij src of dest afhankelijk van status)
-        PriorityQueue<GraphNode> nodesByDistance = new PriorityQueue<>((node1, node2) -> {
-            double distance1 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node1.getLocation()) : graph.calculateTime(dest.getLocation(), node1.getLocation());
-            double distance2 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node2.getLocation()) : graph.calculateTime(dest.getLocation(), node2.getLocation());
-            return Double.compare(distance1, distance2);
-        });
-        nodesByDistance.addAll(graph.getNodes());
-        for (GraphNode node : nodesByDistance){
-            if(node == src || node == dest){
-                continue;
-            }
-            if(node.getStorage() instanceof Stack stack && !stack.isFull()){
-                nodes.add(node);
-                i += stack.getFreeSpace();
-                if(i>=N){
-                    return nodes;
-                }
-            }
-        }
-
-        
-
-        if(i<N){
-            return null;
         }
         return nodes;
     }
