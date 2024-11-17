@@ -90,6 +90,16 @@
             "boxID": "B42"
         },
         {
+            "ID": 21,
+            "pickupLocation": [
+                "BufferPoint"
+            ],
+            "placeLocation": [
+                "stack0_4"
+            ],
+            "boxID": "B43"
+        },
+        {
             "ID": 3,
             "pickupLocation": [
             "stack0_2"
