@@ -206,6 +206,7 @@ public class Warehouse {
                             if (request.isDone()) {
                                 openRequests.remove(request);
                                 requests.remove(request);
+                                vehicle.setCurrentRequestID(-1);
                             }
                         }
                     }
@@ -227,7 +228,7 @@ public class Warehouse {
                             vehicle.setCurrentRequestID(-1);
                         }
 
-                        // als vehicle available maar geen request, geef hem een nieuwe request
+                        // als vehicle available maar geen request, geef hem een nieuwe request 
                         if(vehicle.getCurrentRequestID() == -1){ 
                             openRequests.add(requestsCopy.remove(0));
                             requests.remove(openRequests.get(openRequests.size()-1));
@@ -259,17 +260,24 @@ public class Warehouse {
                             else {
                                 System.out.println("No current request found for vehicle laatstte loop" + vehicle.getID());
                             }
-                            // maak plaats vrij op dest stack voor zoveel requests als er zijn die ook naar dezelfde stack gaan
                             
 
-
-
-
+                            // maak plaats vrij op dest stack voor zoveel requests als er zijn die ook naar dezelfde stack gaan
                             handleRequest(vehicle, openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0), currentTime > 0 ? currentTime-1 : 0,sameDestStackCount);
                             Request request = openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0);
                             if (request.isDone()) {
+                                GraphNode currentDest = currentRequest.getPlaceLocation();
                                 openRequests.remove(request);
-                                requests.remove(request);
+
+                                // geef hem nieuwe request met zelfde dest stack indien er nog requests zijn die ook naar dezelfde stack gaan
+                                for (Request req : requestsCopy){
+                                    if (req.getPlaceLocation() == currentDest){
+                                        openRequests.add(req);
+                                        requests.remove(req);
+                                        vehicle.setCurrentRequestID(req.getID());
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
