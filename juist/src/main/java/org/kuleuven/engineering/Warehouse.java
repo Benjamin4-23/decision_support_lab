@@ -60,7 +60,6 @@ public class Warehouse {
         if (true) {
             // zoek requests met topdozen en de dozen op plek onder die request die ook opgehaald moeten worden voor naar buffer te gaan
             List<Request> requestsWithoutRelocation = new ArrayList<>();
-            List<Request> requestsWithoutRelocationOpen = new ArrayList<>();
             for (Request request : requestsCopy){
                 if (!request.getPickupLocation().isBuffer() && request.getPickupLocation().getStorage().peek().equals(request.getBoxID()) && request.getPlaceLocation().isBuffer()){ // && request.getPlaceLocation().isBuffer()
                     requestsWithoutRelocation.add(request);
@@ -100,10 +99,10 @@ public class Warehouse {
             // ga naar eerste locatie, check of nog plaats op vehicle, dan naar andere pickup, als vol naar buffer
             // enkel met eerste vehicle
             boolean firsGetAnother = false;
-            while (!requestQueueWithoutRelocation.isEmpty() || !requestsWithoutRelocationOpen.isEmpty()){
+            while (!requestQueueWithoutRelocation.isEmpty() || !openRequests.isEmpty()){
                 if (!requestQueueWithoutRelocation.isEmpty() && vehicles.get(0).isAvailable(currentTime) && !firsGetAnother && vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestsWithoutRelocation.isEmpty()){
                     Request request = requestQueueWithoutRelocation.poll();
-                    requestsWithoutRelocationOpen.add(request);
+                    openRequests.add(request);
                     handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0,0);
                     if (vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestQueueWithoutRelocation.isEmpty()){
                         firsGetAnother = true;
@@ -111,7 +110,7 @@ public class Warehouse {
                 }
                 else if (!requestQueueWithoutRelocation.isEmpty() && vehicles.get(0).isAvailable(currentTime) && firsGetAnother){
                     Request request = requestQueueWithoutRelocation.poll();
-                    requestsWithoutRelocationOpen.add(request);
+                    openRequests.add(request);
                     handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0,0);
                     if (vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestQueueWithoutRelocation.isEmpty()){
                         firsGetAnother = true;
@@ -124,14 +123,14 @@ public class Warehouse {
                     // ga naar buffer en werk de open requests 1 voor 1 af
                     boolean done = false;
                     while (!done){
-                        Request request = requestsWithoutRelocationOpen.remove(0);
+                        Request request = openRequests.remove(0);
                         while (!request.isDone()){
                             if (vehicles.get(0).isAvailable(currentTime)){
                                 handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0,0);
                             }
                             currentTime++;
                         }
-                        if (requestsWithoutRelocationOpen.isEmpty()){
+                        if (openRequests.isEmpty()){
                             done = true;
                         }
                     }
@@ -296,7 +295,15 @@ public class Warehouse {
 
         if (request.getStatus() == REQUEST_STATUS.INITIAL){
             // als het vehicle niet leeg is en bij een stack, probeer vehicle zo veel mogelijk leeg te maken
-            if (vehicle.getCarriedBoxesCount() > 0 && vehicle.getCurrentNode().getStorage() instanceof Stack stack){
+            // check if vehicle got a needed box and is collecting more boxes
+            boolean vehicleGotRequestBox = false;
+            for (Request req : openRequests) {
+                if (vehicle.hasBox(req.getBoxID())) {
+                    vehicleGotRequestBox = true;
+                    break;
+                }
+            }
+            if (vehicle.getCarriedBoxesCount() > 0 && vehicle.getCurrentNode().getStorage() instanceof Stack stack && !vehicleGotRequestBox ){
                 if (stack.getFreeSpace() != 0){
                     String box = vehicle.getLastBox();
                     timeAfterOperation = timeAfterMove + loadingSpeed;
