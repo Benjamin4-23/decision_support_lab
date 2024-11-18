@@ -73,7 +73,7 @@
       {
         "ID": 0,
         "name": "Vehicle0",
-        "capacity": 2,
+        "capacity": 3,
         "xCoordinate": 100,
         "yCoordinate": 100
       }
@@ -130,6 +130,16 @@
             ],
             "boxID": "B11"
         },
+        {
+          "ID": 8,
+          "pickupLocation": [
+          "stack0_1"
+          ],
+          "placeLocation": [
+          "BufferPoint"
+          ],
+          "boxID": "B9"
+      },
         {
             "ID": 6,
             "pickupLocation": [
