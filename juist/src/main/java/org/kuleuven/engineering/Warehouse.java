@@ -169,8 +169,8 @@ public class Warehouse {
             }
             for (Vehicle vehicle : vehicles){
                 if(vehicle.isAvailable(currentTime)) {
-                    // is zijn huidige assigned request afgerond?
-                    if(vehicle.getCurrentRequestID() != -1 && openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().isEmpty()) {
+                    // is zijn huidige assigned request afgerond? en er zijn geen open requests met zijn vehicle id
+                    if(vehicle.getCurrentRequestID() != -1 && openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().isEmpty()) {
                         vehicle.setCurrentRequestID(-1);
                     }
 
@@ -198,8 +198,8 @@ public class Warehouse {
                             return 0;
                         });
                         
-                        
                         openRequests.add(requestListStackToBuffer.remove(0));
+                        requests.remove(openRequests.get(openRequests.size()-1));
                         for (Request request : openRequests){
                             if(request.getAssignedVehicle() == -1) {
                                 request.setAssignedVehicle(vehicle.getID());
@@ -209,14 +209,50 @@ public class Warehouse {
                         }
                     }
 
-                    // werk zijn assigned request af (probeer als niet locked, voorlopig anders niks doen)
+                    
                     if(vehicle.getCurrentRequestID() != -1){
-                        handleRequest(vehicle, openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0), currentTime > 0 ? currentTime-1 : 0, 0);
-                        Request request = openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0);
+                        // als op pickup location en nog ruimte op vehicle, kijk in geordende requestlist op diepte of de volgende doos kan opgehaald worden met overige capaciteit
+                        if (!requestsCopy.isEmpty()){
+                            boolean atPickupLocation = vehicle.getCurrentNode() == openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0).getPickupLocation();
+                            if (atPickupLocation && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
+                                // check bovenste doos diepte 
+                                Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
+                                    GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
+                                    GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
+                                    double minTime1 = Double.MAX_VALUE;
+                                    double minTime2 = Double.MAX_VALUE;
+                                    double time1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
+                                    double time2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
+                                    minTime1 = Math.min(minTime1, time1);
+                                    minTime2 = Math.min(minTime2, time2);
+                                    return Double.compare(minTime1, minTime2);
+                                });
+                                requestQueue.addAll(requestsCopy);
+                                List<Request> requestListStackToBuffer = new ArrayList<>(requestQueue);
+                                requestListStackToBuffer.sort((r1, r2) -> {
+                                    if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
+                                        return Integer.compare(stack1.getDepthOfBox(r1.getBoxID()), stack2.getDepthOfBox(r2.getBoxID()));
+                                    }
+                                    return 0;
+                                });
+                                if (requestListStackToBuffer.get(0).getPickupLocation().getStorage() instanceof Stack stack && !stack.containsBox(openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0).getBoxID()) && stack.getDepthOfBox(requestListStackToBuffer.get(0).getBoxID()) <= vehicle.getCapacity() - vehicle.getCarriedBoxesCount()){
+                                    //dit request kan opgehaald worden
+                                    Request request = requestListStackToBuffer.remove(0);
+                                    openRequests.add(request);
+                                    requests.remove(request);
+                                    request.setAssignedVehicle(vehicle.getID());
+                                    handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
+                                    break;
+                                }
+                            }
+                        }
+
+                        handleRequest(vehicle, openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0), currentTime > 0 ? currentTime-1 : 0, 0);
+                        Request request = openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0);
                         if (request.isDone()) {
                             openRequests.remove(request);
-                            requests.remove(request);
-                            vehicle.setCurrentRequestID(-1);
+                            if (openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().isEmpty()) vehicle.setCurrentRequestID(-1);
+                            else vehicle.setCurrentRequestID(openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0).getID());
                         }
                     }
                 }
@@ -335,7 +371,7 @@ public class Warehouse {
         if (request.getStatus() == REQUEST_STATUS.INITIAL){
             // als het vehicle niet leeg is en bij een stack, probeer vehicle zo veel mogelijk leeg te maken
             // check if vehicle got a needed box and is collecting more boxes
-            boolean result = leegVehicle(vehicle, startLocation, timeAfterMove, time);
+            boolean result = leegVehicle(vehicle, startLocation, timeAfterMove, time, request);
             // als dest een stack is en full, dan moet er gerelocate worden of check of meerdere requests ook naar dezelfde stack gaan, zoveel plaats vrijmaken op dest stack, dan al die requests afwerken
             if (!result) result = maakPlaatsVrijOpDest(vehicle, startLocation, timeAfterMove, time, request, sameDestStackCount);
             // ga naar src en PU
@@ -368,7 +404,7 @@ public class Warehouse {
 
 
 
-    private boolean leegVehicle(Vehicle vehicle, Location startLocation, double timeAfterMove, double time) {
+    private boolean leegVehicle(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
         boolean vehicleGotRequestBox = false;
         for (Request req : openRequests) {
             if (vehicle.hasBox(req.getBoxID())) {
@@ -376,7 +412,7 @@ public class Warehouse {
                 break;
             }
         }
-        if (vehicle.getCarriedBoxesCount() > 0 && vehicle.getCurrentNode().getStorage() instanceof Stack stack && !vehicleGotRequestBox ){
+        if (vehicle.getCarriedBoxesCount() > 0 && vehicle.getCurrentNode().getStorage() instanceof Stack stack && !vehicleGotRequestBox && vehicle.currentNode != request.getPickupLocation()){
             if (stack.getFreeSpace() != 0){
                 String box = vehicle.getLastBox();
                 double timeAfterOperation = timeAfterMove + loadingSpeed;

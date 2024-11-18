@@ -84,4 +84,8 @@ public class Stack implements IStorage {
     public Object getBoxes() {
         return boxes.clone();
     }
+
+    public boolean containsBox(String boxID) {
+        return boxes.contains(boxID);
+    }
 }
