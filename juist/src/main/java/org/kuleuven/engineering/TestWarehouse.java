@@ -17,6 +17,6 @@ public class TestWarehouse {
         warehouse.scheduleRequests();
 
         // Print the operation log
-        warehouse.printOperationLog();
+        warehouse.writeOperationLog();
     }
 }

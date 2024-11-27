@@ -1,5 +1,6 @@
 package org.kuleuven.engineering;
 
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -673,14 +674,20 @@ public class Warehouse {
             case DEST_RELOC -> "PL_RELOC";
             default -> "";
         };
-        System.out.println(vehicleName + ";\t" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";\t" + endLocation.getX() + ";" + endLocation.getY() + ";" + (int)endTime + ";\t"+ boxId + ";" + operation);
         operationLog.add(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
 
     }
 
-    public void printOperationLog() {
+    public void writeOperationLog() {
+        StringBuilder output = new StringBuilder();
         for (String logEntry : operationLog) {
+            output.append(logEntry+'\n');
             System.out.println(logEntry);
+        }
+        try(FileWriter fw = new FileWriter("output.txt")){
+            fw.write(output.toString());
+        } catch (Exception e){
+            System.out.println(e);
         }
     }
 
