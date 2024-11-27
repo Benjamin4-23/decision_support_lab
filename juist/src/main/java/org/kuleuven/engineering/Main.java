@@ -10,9 +10,9 @@ public class Main {
         Path filePath = Paths.get(currentPath.toString(), "juist", "data", fileName);
         Warehouse warehouse = DataReader.read(filePath);
         warehouse.scheduleRequests();
-        warehouse.writeOperationLog();
+        // warehouse.writeOperationLog();
     }
 }
 
-// biji ophalen van stack kijken of het needed box is, of box van andere request
+// bij ophalen van stack kijken of het needed box is, of box van andere request
 

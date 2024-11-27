@@ -58,7 +58,7 @@ public class Warehouse {
     public void scheduleRequests() {
         // doe een ronde requests met topdozen die naar buffer moeten
         scheduleStackToBufferRequestsOfTopBoxes();
-
+        
         // daarna werk de rest 1 voor 1 af (eerst stack -> buffer requests based on depth)
         scheduleStackToBufferRequests();
         
@@ -105,26 +105,33 @@ public class Warehouse {
             return (minTime1 > minTime2) ? 1 : -1;
         });
         requestQueueWithoutRelocation.addAll(requestsCopy);
+        List<Request> requestListBufferToStack = new ArrayList<>(requestQueueWithoutRelocation);
+        requestListBufferToStack.sort((r1, r2) -> {
+            if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
+                return Integer.compare(stack1.getDepthOfBox(r1.getBoxID()), stack2.getDepthOfBox(r2.getBoxID()));
+            }
+            return 0;
+        });
 
         // ga naar eerste locatie, check of nog plaats op vehicle, dan naar andere pickup, als vol naar buffer
         // enkel met eerste vehicle
         boolean firsGetAnother = false;
-        while (!requestQueueWithoutRelocation.isEmpty() || !openRequests.isEmpty()){
-            if (!requestQueueWithoutRelocation.isEmpty() && openRequests.isEmpty() && !firsGetAnother && vehicles.get(0).isAvailable(currentTime) && vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount()){
-                Request request = requestQueueWithoutRelocation.poll();
+        while (!requestListBufferToStack.isEmpty() || !openRequests.isEmpty()){
+            if (!requestListBufferToStack.isEmpty() && openRequests.isEmpty() && !firsGetAnother && vehicles.get(0).isAvailable(currentTime) && vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount()){
+                Request request = requestListBufferToStack.remove(0);
                 openRequests.add(request);
                 request.setAssignedVehicle(0);
                 handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0,0);
-                if (vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestQueueWithoutRelocation.isEmpty()){
+                if (vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestListBufferToStack.isEmpty()){
                     firsGetAnother = true;
                 }
             }
-            else if (!requestQueueWithoutRelocation.isEmpty() && vehicles.get(0).isAvailable(currentTime) && firsGetAnother){ // geen check op capacity, gebeurd bij setten firstgetanother
-                Request request = requestQueueWithoutRelocation.poll();
+            else if (!requestListBufferToStack.isEmpty() && vehicles.get(0).isAvailable(currentTime) && firsGetAnother){ // geen check op capacity, gebeurd bij setten firstgetanother
+                Request request = requestListBufferToStack.remove(0);
                 openRequests.add(request);
                 request.setAssignedVehicle(0);
                 handleRequest(vehicles.get(0), request, currentTime > 0 ? currentTime-1 : 0,0);
-                if (vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestQueueWithoutRelocation.isEmpty()){
+                if (vehicles.get(0).getCapacity() > vehicles.get(0).getCarriedBoxesCount() && !requestListBufferToStack.isEmpty()){
                     firsGetAnother = true;
                 }
                 else{
@@ -171,7 +178,7 @@ public class Warehouse {
             for (Vehicle vehicle : vehicles){
                 if(vehicle.isAvailable(currentTime)) {
                     // is zijn huidige assigned request afgerond? en er zijn geen open requests met zijn vehicle id
-                    if(vehicle.getCurrentRequestID() != -1 && openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().isEmpty()) {
+                    if(vehicle.getCurrentRequestID() != -1 && openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().isEmpty()) {
                         vehicle.setCurrentRequestID(-1);
                     }
 
@@ -190,7 +197,6 @@ public class Warehouse {
                             return Double.compare(minTime1, minTime2);
                         });
                         requestQueue.addAll(requestsCopy);
-                        // sorteer requests die van stack naar buffer moeten op diepte in stack om eerst requests van hogere dozen af te werken
                         List<Request> requestListStackToBuffer = new ArrayList<>(requestQueue);
                         requestListStackToBuffer.sort((r1, r2) -> {
                             if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
@@ -198,63 +204,79 @@ public class Warehouse {
                             }
                             return 0;
                         });
-                        
-                        openRequests.add(requestListStackToBuffer.remove(0));
-                        requests.remove(openRequests.get(openRequests.size()-1));
-                        for (Request request : openRequests){
-                            if(request.getAssignedVehicle() == -1) {
-                                request.setAssignedVehicle(vehicle.getID());
-                                vehicle.setCurrentRequestID(request.getID());
-                                break;
-                            }
-                        }
+                        Request request = requestListStackToBuffer.remove(0);
+                        openRequests.add(request);
+                        requests.remove(request);
+                        request.setAssignedVehicle(vehicle.getID());
+                        vehicle.setCurrentRequestID(request.getID());
                     }
 
                     
                     if(vehicle.getCurrentRequestID() != -1){
+                        Request currentRequest = openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0);
+                        boolean handleEerstAnderRequest = false;
+                        Request anderRequest = null;
                         // als op pickup location en nog ruimte op vehicle, kijk in geordende requestlist op diepte of de volgende doos kan opgehaald worden met overige capaciteit
-                        if (!requestsCopy.isEmpty()){
-                            boolean atPickupLocation = vehicle.getCurrentNode() == openRequests.stream().filter( x -> { return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0).getPickupLocation();
+                        if (!requestsCopy.isEmpty() && vehicle.hasBox(currentRequest.getBoxID())){
+                            boolean atPickupLocation = vehicle.getCurrentNode() == openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0).getPickupLocation();
                             if (atPickupLocation && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
                                 // check bovenste doos diepte 
-                                Queue<Request> requestQueue = new PriorityQueue<>((r1, r2) -> {
-                                    GraphNode boxLocation1 = boxLocationMap.get(r1.getBoxID());
-                                    GraphNode boxLocation2 = boxLocationMap.get(r2.getBoxID());
-                                    double minTime1 = Double.MAX_VALUE;
-                                    double minTime2 = Double.MAX_VALUE;
-                                    double time1 = graph.calculateTime(boxLocation1.getLocation(), vehicle.getLocation());
-                                    double time2 = graph.calculateTime(boxLocation2.getLocation(), vehicle.getLocation());
-                                    minTime1 = Math.min(minTime1, time1);
-                                    minTime2 = Math.min(minTime2, time2);
-                                    return Double.compare(minTime1, minTime2);
-                                });
-                                requestQueue.addAll(requestsCopy);
-                                List<Request> requestListStackToBuffer = new ArrayList<>(requestQueue);
+                                List<Request> requestListStackToBuffer = new ArrayList<>(requestsCopy);
                                 requestListStackToBuffer.sort((r1, r2) -> {
                                     if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
                                         return Integer.compare(stack1.getDepthOfBox(r1.getBoxID()), stack2.getDepthOfBox(r2.getBoxID()));
                                     }
                                     return 0;
                                 });
-                                if (requestListStackToBuffer.get(0).getPickupLocation().getStorage() instanceof Stack stack && !stack.containsBox(openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0).getBoxID()) && stack.getDepthOfBox(requestListStackToBuffer.get(0).getBoxID()) <= vehicle.getCapacity() - vehicle.getCarriedBoxesCount()){
-                                    //dit request kan opgehaald worden
-                                    Request request = requestListStackToBuffer.remove(0);
-                                    openRequests.add(request);
-                                    requests.remove(request);
-                                    request.setAssignedVehicle(vehicle.getID());
-                                    handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
+                                for (Request request : requestListStackToBuffer){
+                                    if (request.getPickupLocation().getStorage() instanceof Stack stack && vehicle.getCurrentNode() == request.getPickupLocation() && stack.getDepthOfBox(request.getBoxID()) <= vehicle.getCapacity() - vehicle.getCarriedBoxesCount()){
+                                        //dit request kan opgehaald worden
+                                        openRequests.add(request);
+                                        requests.remove(request);
+                                        request.setAssignedVehicle(vehicle.getID());
+                                        anderRequest = request;
+                                        handleEerstAnderRequest = true;
+                                        break;
+                                    }
+                                }
+
+                                
+
+                                if (!handleEerstAnderRequest){
+                                    for (Request request : requestListStackToBuffer){
+                                        if (request.getPickupLocation().getStorage() instanceof Stack stack && stack.getDepthOfBox(request.getBoxID()) <= vehicle.getCapacity() - vehicle.getCarriedBoxesCount()){
+                                            //dit request kan opgehaald worden
+                                            openRequests.add(request);
+                                            requests.remove(request);
+                                            request.setAssignedVehicle(vehicle.getID());
+                                            anderRequest = request;
+                                            handleEerstAnderRequest = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (handleEerstAnderRequest){ // dit gaat enkel naar stack en PU
+                            handleRequest(vehicle, anderRequest, currentTime > 0 ? currentTime-1 : 0, 0);
+                        }
+                        else{ // dit kan ook naar buffer en PL
+                            handleRequest(vehicle, openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0), currentTime > 0 ? currentTime-1 : 0, 0);
+                            
+                            for (Request request : openRequests){
+                                if (request.isDone()){
+                                    openRequests.remove(request);
+                                    if (vehicle.getCurrentRequestID() == request.getID()){
+                                        List<Request> openRequestsVerbondenAanVehicle = openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList();
+                                        if (!openRequestsVerbondenAanVehicle.isEmpty()) vehicle.setCurrentRequestID(openRequestsVerbondenAanVehicle.get(0).getID());
+                                        vehicle.setCurrentRequestID(-1);
+                                    }
                                     break;
                                 }
                             }
                         }
 
-                        handleRequest(vehicle, openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0), currentTime > 0 ? currentTime-1 : 0, 0);
-                        Request request = openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0);
-                        if (request.isDone()) {
-                            openRequests.remove(request);
-                            if (openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().isEmpty()) vehicle.setCurrentRequestID(-1);
-                            else vehicle.setCurrentRequestID(openRequests.stream().filter( x -> { return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0).getID());
-                        }
                     }
                 }
             }
@@ -681,6 +703,7 @@ public class Warehouse {
 
     public void writeOperationLog() {
         StringBuilder output = new StringBuilder();
+        System.out.println("--------------------------------------------------------------------------------------------Writing operation log");
         for (String logEntry : operationLog) {
             output.append(logEntry+'\n');
             System.out.println(logEntry);
@@ -690,6 +713,7 @@ public class Warehouse {
         } catch (Exception e){
             System.out.println(e);
         }
+        System.out.println("aantal moves: " + operationLog.size());
     }
 
     @Override
