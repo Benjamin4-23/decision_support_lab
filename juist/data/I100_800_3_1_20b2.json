@@ -1825,6 +1825,20 @@
 "capacity": 1,
 "x": 20,
 "y": 100
+},
+{
+"ID": 1,
+"name": "Vehicle1",
+"capacity": 1,
+"x": 30,
+"y": 100
+},
+{
+"ID": 2,
+"name": "Vehicle2",
+"capacity": 1,
+"x": 40,
+"y": 100
 }
 ],
 "requests": [

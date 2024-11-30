@@ -62,6 +62,16 @@
   ],
   "requests": [
     {
+      "ID": 20,
+      "pickupLocation": [
+        "stack0_2"
+      ],
+      "placeLocation": [
+        "BufferPoint"
+      ],
+      "boxID": "B14"
+    },
+    {
       "ID": 3,
       "pickupLocation": [
         "stack0_2"
