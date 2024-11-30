@@ -58,10 +58,10 @@ public class DataReader {
                 JSONObject R_object = new JSONObject(Jobject);
                 // System.out.println(R_object.getJSONArray("pickupLocation").getString(0)+"  "+R_object.getJSONArray("placeLocation").getString(0));
                 try{
-                    // pickupLocation = nodeMap.get(R_object.getJSONArray("pickupLocation").getString(0));
-                    // placeLocation = nodeMap.get(R_object.getJSONArray("placeLocation").getString(0));
-                    pickupLocation = nodeMap.get(R_object.getString("pickupLocation"));
-                    placeLocation = nodeMap.get(R_object.getString("placeLocation"));
+                    pickupLocation = nodeMap.get(R_object.getJSONArray("pickupLocation").getString(0));
+                    placeLocation = nodeMap.get(R_object.getJSONArray("placeLocation").getString(0));
+                    //pickupLocation = nodeMap.get(R_object.getString("pickupLocation"));
+                    //placeLocation = nodeMap.get(R_object.getString("placeLocation"));
                 } catch (JSONException e){
                     pickupLocation = nodeMap.get(R_object.getString("pickupLocation"));
                     placeLocation = nodeMap.get(R_object.getString("placeLocation"));

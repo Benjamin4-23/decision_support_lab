@@ -21,8 +21,8 @@ public class Vehicle {
 
     public Vehicle(JSONObject object) {
         try{
-            // this.location = new Location(object.getInt("xCoordinate"), object.getInt("yCoordinate"));
-            this.location = new Location(object.getInt("x"), object.getInt("y"));
+            this.location = new Location(object.getInt("xCoordinate"), object.getInt("yCoordinate"));
+            //this.location = new Location(object.getInt("x"), object.getInt("y"));
         } catch (JSONException e){
             this.location = new Location(object.getInt("x"), object.getInt("y"));
         }

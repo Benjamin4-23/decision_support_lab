@@ -27,7 +27,10 @@ public class Warehouse {
 
     public Warehouse(Graph graph, List<Vehicle> vehicles, List<Request> requests, int loadingSpeed) {
         this.graph = graph;
-        this.vehicles = vehicles;
+        // multiple vehicles doesn't work yet, filter to one
+        this.vehicles = new ArrayList<>(){
+            {add(vehicles.getFirst());}
+        };
         this.requests = requests;
         this.loadingSpeed = loadingSpeed;
         calculateStartingState();
@@ -406,7 +409,8 @@ public class Warehouse {
            // kijken of relocation nodig (we hebben box niet op vehicle), als vehicle vol en nog niet juiste box, ga naar temp stack
            boolean result = boxesRelocatenNaarTempStack(vehicle, startLocation, timeAfterMove, timeAfterMove, request);
            // anders als vehicle niet vol en nog niet juiste box, probeer nog 1 op te nemen
-           if (!result) result = NeemNogEenboxOpBijSrc(vehicle, startLocation, timeAfterMove, time, request);
+           if (!result)
+               result = NeemNogEenboxOpBijSrc(vehicle, startLocation, timeAfterMove, time, request);
            // anders naar dest en PL
            if (!result) placeBoxBijDest(vehicle, startLocation, timeAfterMove, time, request);
            return true;

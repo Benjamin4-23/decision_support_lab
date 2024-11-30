@@ -1,22 +1,22 @@
 package org.kuleuven.engineering;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Scanner;
 
 public class TestWarehouse {
     public static void main(String[] args) {
-        // Define the path to the JSON file you want to test
-        String fileName = "I30_100_3_3_10.json"; // You can change this to test different files
-        Path currentPath = Paths.get(System.getProperty("user.dir")); // current location
-        Path filePath = Paths.get(currentPath.toString(), "juist", "data", fileName);
+        Scanner scanner = new Scanner(System.in);
+        for (File f : new File("./juist/data/").listFiles()) {
+            System.out.printf("\033[33mRunning file %s!\033[0m %n", f.getName());
+            Warehouse warehouse = DataReader.read(Path.of(f.getPath()));
+            warehouse.scheduleRequests();
+            //warehouse.writeOperationLog();
 
-        // Read the warehouse configuration from the JSON file
-        Warehouse warehouse = DataReader.read(filePath);
-
-        // Schedule the requests
-        warehouse.scheduleRequests();
-
-        // Print the operation log
-        warehouse.writeOperationLog();
+            System.out.print("Press enter to run next file");
+            String name = scanner.nextLine();
+        }
     }
 }
