@@ -694,10 +694,10 @@ public class Warehouse {
     public void addLogEntry(String vehicleName, Location startLocation, double startTime, Location endLocation, double endTime, String boxId, REQUEST_STATUS type){
         String operation = switch (type){
             case SRC -> "PU";
-            case SRC_RELOC -> "PL_RELOC";
+            case SRC_RELOC -> "PL";
             case DEST -> "PL";
             case DEST_PU -> "PU";
-            case DEST_RELOC -> "PL_RELOC";
+            case DEST_RELOC -> "PL";
             default -> "";
         };
         //System.out.println(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
