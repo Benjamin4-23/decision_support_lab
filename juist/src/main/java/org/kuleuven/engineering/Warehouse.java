@@ -700,24 +700,24 @@ public class Warehouse {
             case DEST_RELOC -> "PL_RELOC";
             default -> "";
         };
-        System.out.println(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
+        //System.out.println(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
         operationLog.add(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
 
     }
 
     public void writeOperationLog() {
         StringBuilder output = new StringBuilder();
-        System.out.println("--------------------------------------------------------------------------------------------Writing operation log");
+        //System.out.println("--------------------------------------------------------------------------------------------Writing operation log");
         for (String logEntry : operationLog) {
             output.append(logEntry+'\n');
             System.out.println(logEntry);
         }
         try(FileWriter fw = new FileWriter("output.txt")){
-            fw.write(output.toString());
+            fw.write("%vehicle;startx;starty;starttime;endx;endy;endtime;box;operation\n"+output);
         } catch (Exception e){
             System.out.println(e);
         }
-        System.out.println("aantal moves: " + operationLog.size());
+        //System.out.println("aantal moves: " + operationLog.size());
     }
 
     @Override

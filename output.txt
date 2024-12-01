@@ -1,3 +1,4 @@
+%vehicle;startx;starty;starttime;endx;endy;endtime;box;operation
 Vehicle0;100;100;0;110;100;15;B9;PU
 Vehicle0;110;100;15;120;100;30;B14;PU
 Vehicle0;120;100;30;120;100;35;B13;PU

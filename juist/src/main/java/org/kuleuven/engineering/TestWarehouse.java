@@ -13,7 +13,7 @@ public class TestWarehouse {
             System.out.printf("\033[33mRunning file %s!\033[0m %n", f.getName());
             Warehouse warehouse = DataReader.read(Path.of(f.getPath()));
             warehouse.scheduleRequests();
-            //warehouse.writeOperationLog();
+            warehouse.writeOperationLog();
 
             System.out.print("Press enter to run next file");
             String name = scanner.nextLine();

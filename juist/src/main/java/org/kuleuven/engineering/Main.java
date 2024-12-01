@@ -10,7 +10,7 @@ public class Main {
         Path filePath = Paths.get(currentPath.toString(), "juist", "data", fileName);
         Warehouse warehouse = DataReader.read(filePath);
         warehouse.scheduleRequests();
-        // warehouse.writeOperationLog();
+        warehouse.writeOperationLog();
     }
 }
 
