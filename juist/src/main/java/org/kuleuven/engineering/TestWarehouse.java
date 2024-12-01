@@ -11,7 +11,7 @@ public class TestWarehouse {
         Scanner scanner = new Scanner(System.in);
         for (File f : new File("./juist/data/").listFiles()) {
             System.out.printf("\033[33mRunning file %s!\033[0m %n", f.getName());
-            Warehouse warehouse = DataReader.read(Path.of(f.getPath()));
+            Warehouse warehouse = DataReader.read(f.getPath());
             warehouse.scheduleRequests();
             warehouse.writeOperationLog();
 

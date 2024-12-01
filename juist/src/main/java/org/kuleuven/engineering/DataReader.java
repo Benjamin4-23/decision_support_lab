@@ -14,9 +14,9 @@ import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
 
 public class DataReader {
-    public static Warehouse read(Path filePath) {
+    public static Warehouse read(String filePath) {
         try {
-            String content = Files.readString(filePath);
+            String content = Files.readString(Path.of(filePath));
             JSONObject object = JsonParser.parseString(content);
 
             int loadingDuration = object.getInt("loadingduration");
