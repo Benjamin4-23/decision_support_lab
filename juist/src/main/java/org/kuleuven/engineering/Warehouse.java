@@ -694,20 +694,20 @@ public class Warehouse {
     public void addLogEntry(String vehicleName, Location startLocation, double startTime, Location endLocation, double endTime, String boxId, REQUEST_STATUS type){
         String operation = switch (type){
             case SRC -> "PU";
-            case SRC_RELOC -> "PL";
+            case SRC_RELOC -> "PL_RELOC";
             case DEST -> "PL";
             case DEST_PU -> "PU";
-            case DEST_RELOC -> "PL";
+            case DEST_RELOC -> "PL_RELOC";
             default -> "";
         };
-        //System.out.println(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
+        System.out.println(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
         operationLog.add(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
 
     }
 
     public void writeOperationLog() {
         StringBuilder output = new StringBuilder();
-        //System.out.println("--------------------------------------------------------------------------------------------Writing operation log");
+        System.out.println("--------------------------------------------------------------------------------------------Writing operation log");
         for (String logEntry : operationLog) {
             output.append(logEntry+'\n');
             System.out.println(logEntry);
@@ -717,7 +717,7 @@ public class Warehouse {
         } catch (Exception e){
             System.out.println(e);
         }
-        //System.out.println("aantal moves: " + operationLog.size());
+        System.out.println("aantal moves: " + operationLog.size());
     }
 
     @Override
