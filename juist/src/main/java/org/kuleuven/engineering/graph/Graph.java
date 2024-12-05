@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.kuleuven.engineering.Location;
+import org.kuleuven.engineering.Stack;
 import org.kuleuven.engineering.Vehicle;
 
 public class Graph {
@@ -187,6 +188,15 @@ public class Graph {
 
     public int getVehicleSpeed() {
         return vehicleSpeed;
+    }
+
+    public GraphNode getStackByID(int id){
+        for (GraphNode node : nodes){
+            if (node.getStorage() instanceof Stack stack && stack.getID() == id){
+                return node;
+            }
+        }
+        return null;
     }
 
 }

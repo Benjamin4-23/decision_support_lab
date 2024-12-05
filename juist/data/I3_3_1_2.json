@@ -94,6 +94,13 @@
         "capacity": 3,
         "xCoordinate": 100,
         "yCoordinate": 100
+      },
+      {
+        "ID": 1,
+        "name": "Vehicle1",
+        "capacity": 3,
+        "xCoordinate":110,
+        "yCoordinate": 100
       }
     ],
     "requests": [
@@ -116,7 +123,17 @@
           "BufferPoint"
           ],
           "boxID": "B9"
-        },
+      },
+      {
+        "ID": 14,
+        "pickupLocation": [
+          "stack0_2"
+        ],
+        "placeLocation": [
+          "BufferPoint"
+        ],
+        "boxID": "B14"
+      },
 
 
 
@@ -136,26 +153,8 @@
           "boxID": "B10"
       },
       
-      {
-          "ID": 12,
-          "pickupLocation": [
-          "stack0_2"
-          ],
-          "placeLocation": [
-          "BufferPoint"
-          ],
-          "boxID": "B12"
-      },
-      {
-        "ID": 13,
-        "pickupLocation": [
-        "stack0_2"
-        ],
-        "placeLocation": [
-        "BufferPoint"
-        ],
-        "boxID": "B13"
-      },
+      
+
 
 
 

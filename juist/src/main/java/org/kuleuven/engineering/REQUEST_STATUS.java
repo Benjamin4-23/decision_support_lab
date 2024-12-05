@@ -6,5 +6,6 @@ public enum REQUEST_STATUS{
     SRC_RELOC,
     DEST,
     DEST_PU,
-    DEST_RELOC
+    DEST_RELOC,
+    SIMULATED
 }
