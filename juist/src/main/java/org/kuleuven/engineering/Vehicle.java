@@ -18,7 +18,6 @@ public class Vehicle {
     public GraphNode currentNode = null;
     private List<Request> requests;
     private List<Request> openRequests;
-    private Request currentOpenRequest = null;
     private List<Request> simulatedRequests;
     private List<Request> openSimulatedRequests;
     private List<Integer> myStackIDs;
@@ -140,16 +139,6 @@ public class Vehicle {
                 myStackIDs.add(request.getPlaceLocation().getStorage().getID());
             }
         }
-    }
-
-    public void setCurrentOpenRequest(Request request){
-        this.currentOpenRequest = request;
-        this.currentRequestID = request.getID();
-        request.setAssignedVehicle(ID);
-    }
-
-    public Request getCurrentOpenRequest(){
-        return currentOpenRequest;
     }
 
     public List<Integer> getMyStackIDs(){
