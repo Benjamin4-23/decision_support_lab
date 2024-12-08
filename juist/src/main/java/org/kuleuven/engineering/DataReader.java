@@ -60,8 +60,6 @@ public class DataReader {
                 try{
                     pickupLocation = nodeMap.get(R_object.getJSONArray("pickupLocation").getString(0));
                     placeLocation = nodeMap.get(R_object.getJSONArray("placeLocation").getString(0));
-                    //pickupLocation = nodeMap.get(R_object.getString("pickupLocation"));
-                    //placeLocation = nodeMap.get(R_object.getString("placeLocation"));
                 } catch (JSONException e){
                     pickupLocation = nodeMap.get(R_object.getString("pickupLocation"));
                     placeLocation = nodeMap.get(R_object.getString("placeLocation"));
@@ -70,7 +68,6 @@ public class DataReader {
                 int ID = R_object.getInt("ID");
                 String boxID = R_object.getString("boxID");
                 requests.add(new Request(pickupLocation, placeLocation, ID, boxID));
-                //requests.add(new Request(new JSONObject(Jobject)));
             }
 
             return new Warehouse(graph, vehicles, requests, loadingDuration);

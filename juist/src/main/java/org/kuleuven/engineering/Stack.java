@@ -57,10 +57,6 @@ public class Stack implements IStorage {
         return capacity - boxes.size();
     }
 
-    public boolean isBoxOnTop(String boxID) {
-        return !boxes.isEmpty() && Objects.equals(boxes.peek(), boxID);
-    }
-
     public int getCapacity() {
         return capacity;
     }
@@ -83,9 +79,5 @@ public class Stack implements IStorage {
 
     public Object getBoxes() {
         return boxes.clone();
-    }
-
-    public boolean containsBox(String boxID) {
-        return boxes.contains(boxID);
     }
 }

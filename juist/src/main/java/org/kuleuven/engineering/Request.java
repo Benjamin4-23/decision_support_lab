@@ -9,7 +9,6 @@ public class Request {
     private final String boxID;
     private int assignedVehicle = -1;
     private REQUEST_STATUS status = REQUEST_STATUS.INITIAL;
-    private boolean done = false;
 
     public Request(GraphNode pickup, GraphNode place, int ID, String boxID) {
         this.ID = ID;

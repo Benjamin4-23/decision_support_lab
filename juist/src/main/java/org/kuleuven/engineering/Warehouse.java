@@ -26,10 +26,6 @@ public class Warehouse {
 
     public Warehouse(Graph graph, List<Vehicle> vehicles, List<Request> requests, int loadingSpeed) {
         this.graph = graph;
-        // multiple vehicles doesn't work yet, filter to one
-        // this.vehicles = new ArrayList<>(){
-        //     {add(vehicles.getFirst());}
-        // };
         this.vehicles = vehicles;
         this.requests = requests;
         this.loadingSpeed = loadingSpeed;
@@ -93,12 +89,13 @@ public class Warehouse {
         List<Request> requestListWithoutRelocation= new ArrayList<>();
         List<Request> tempList = new ArrayList<>(requests); 
         for (Request request : tempList){
-            if (!request.getPickupLocation().isBuffer() && request.getPickupLocation().getStorage().peek().equals(request.getBoxID()) && request.getPlaceLocation().isBuffer()){ 
+            IStorage storage = request.getPickupLocation().getStorage();
+            if (!request.getPickupLocation().isBuffer() && storage.peek().equals(request.getBoxID()) && request.getPlaceLocation().isBuffer()){
                 requestListWithoutRelocation.add(request);
                 requests.remove(request);
                 // zoek of de doos eronder ook opgehaald moet worden
-                for (int i = 1; i < ((Stack)request.getPickupLocation().getStorage()).getBoxesSize(); i++){
-                    String boxIDBelow = ((Stack)request.getPickupLocation().getStorage()).peakAtDepth(i);
+                for (int i = 1; i < ((Stack)storage).getBoxesSize(); i++){
+                    String boxIDBelow = ((Stack)storage).peakAtDepth(i);
                     // als die box ook opgehaald moet worden, voeg die request toe
                     boolean found = false;
                     for (Request request2 : tempList){
@@ -399,7 +396,7 @@ public class Warehouse {
             while (requestsPerVehicleList.get(vehicleIndex).size() >= requestsPerVehicle){
                 vehicleIndex++;
             }
-            List<Request> requestsForStack = requestList.stream().filter(x -> {return ((Stack) x.getPickupLocation().getStorage()).getID() == stackID;}).toList();
+            List<Request> requestsForStack = requestList.stream().filter(x -> x.getPickupLocation().getStorage().getID() == stackID).toList();
             requestsPerVehicleList.get(vehicleIndex).addAll(requestsForStack);
             vehicleIndex++;
             if (vehicleIndex == vehicles.size()){
@@ -428,7 +425,7 @@ public class Warehouse {
             while (requestsPerVehicleList.get(vehicleIndex).size() >= requestsPerVehicle){
                 vehicleIndex++;
             }
-            List<Request> requestsForStack = requestList.stream().filter(x -> {return ((Stack) x.getPlaceLocation().getStorage()).getID() == stackID;}).toList();
+            List<Request> requestsForStack = requestList.stream().filter(x -> x.getPlaceLocation().getStorage().getID() == stackID).toList();
             requestsPerVehicleList.get(vehicleIndex).addAll(requestsForStack);
             vehicleIndex++;
             if (vehicleIndex == vehicles.size()){
@@ -446,11 +443,12 @@ public class Warehouse {
     public HashMap<Integer, Integer>  calculateStackLoad(List<Request> requestList){
         HashMap<Integer, Integer> stackLoad = new HashMap<>();
         for (Request request : requestList){
-            if (stackLoad.containsKey(((Stack) request.getPickupLocation().getStorage()).getID())){
-                stackLoad.put(((Stack) request.getPickupLocation().getStorage()).getID(), stackLoad.get(((Stack) request.getPickupLocation().getStorage()).getID()) + 1);
+            int requestStorageID = request.getPickupLocation().getStorage().getID();
+            if (stackLoad.containsKey(requestStorageID)){
+                stackLoad.put(requestStorageID, stackLoad.get(requestStorageID) + 1);
             }
             else{
-                stackLoad.put(((Stack) request.getPickupLocation().getStorage()).getID(), 1);
+                stackLoad.put(requestStorageID, 1);
             }
             
         }
@@ -459,26 +457,16 @@ public class Warehouse {
     public HashMap<Integer, Integer>  calculateStackLoad2(List<Request> requestList){
         HashMap<Integer, Integer> stackLoad = new HashMap<>();
         for (Request request : requestList){
-            if (stackLoad.containsKey(((Stack) request.getPlaceLocation().getStorage()).getID())){
-                stackLoad.put(((Stack) request.getPlaceLocation().getStorage()).getID(), stackLoad.get(((Stack) request.getPlaceLocation().getStorage()).getID()) + 1);
+            int requestStorageID = request.getPlaceLocation().getStorage().getID();
+            if (stackLoad.containsKey(requestStorageID)){
+                stackLoad.put(requestStorageID, stackLoad.get(requestStorageID) + 1);
             }
             else{
-                stackLoad.put(((Stack) request.getPlaceLocation().getStorage()).getID(), 1);
+                stackLoad.put(requestStorageID, 1);
             }
-            
         }
         return stackLoad;
     }
-
-
-
-
-
-
-
-
-
-
 
     private boolean handleRequest(Vehicle vehicle, Request request, double time, int sameDestStackCount){
         Location startLocation = vehicle.getLocation();
@@ -571,7 +559,8 @@ public class Warehouse {
                 break;
             }
         }
-        if (vehicle.getCarriedBoxesCount() > 0 && vehicle.getCurrentNode().getStorage() instanceof Stack stack && !vehicleGotRequestBox && vehicle.currentNode != request.getPickupLocation()){
+        if (vehicle.getCarriedBoxesCount() > 0 && vehicle.getCurrentNode().getStorage() instanceof Stack stack
+                && !vehicleGotRequestBox && vehicle.currentNode != request.getPickupLocation()){
             if (stack.getFreeSpace() > 0){
                 String box = vehicle.getLastBox();
                 double timeAfterOperation = timeAfterMove + loadingSpeed;

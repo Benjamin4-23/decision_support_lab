@@ -22,7 +22,6 @@ public class Vehicle {
     private List<Request> openSimulatedRequests;
     private List<Integer> myStackIDs;
     double unavailableUntil = -1;
-    public Queue<Event> eventQueue = new ArrayDeque<>();
     private ArrayList<String> carriedBoxes;
     private int carriedBoxesCount;
 
@@ -73,16 +72,6 @@ public class Vehicle {
 
     public GraphNode getCurrentNode(){
         return currentNode;
-    }
-
-    public void moveTo(double targetX, double targetY) {
-        // Implement movement logic
-        this.location.setX((int) targetX);
-        this.location.setY((int) targetY);
-    }
-
-    public void moveTo(Location location) {
-        this.location = location;
     }
 
     public void moveTo(GraphNode node) {

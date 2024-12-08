@@ -56,22 +56,6 @@ public class Graph {
         }
     }
 
-    public double getTimeToClosestNode(String locationName) {
-        GraphNode targetNode = nodeMap.get(locationName);
-        if (targetNode == null) {
-            return Double.POSITIVE_INFINITY;
-        }
-
-        double minDistance = Double.POSITIVE_INFINITY;
-        for (GraphNode node : nodes) {
-            double distance = getTravelTime(node, targetNode);
-            if (distance < minDistance) {
-                minDistance = distance;
-            }
-        }
-        return minDistance;
-    }
-
     public List<GraphNode> getNodes() {
         return nodes;
     }
@@ -184,10 +168,6 @@ public class Graph {
         }
 
         return sb.toString();
-    }
-
-    public int getVehicleSpeed() {
-        return vehicleSpeed;
     }
 
     public GraphNode getStackByID(int id){

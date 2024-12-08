@@ -13,10 +13,6 @@ public class JsonParser {
         return new JSONObject(json);
     }
 
-    public static JSONArray parseArray(String json) {
-        return new JSONArray(json);
-    }
-
     public static List<Map<String, Object>> toList(JSONArray array) {
         return array.toList().stream()
                 .map(obj -> (Map<String, Object>) obj)

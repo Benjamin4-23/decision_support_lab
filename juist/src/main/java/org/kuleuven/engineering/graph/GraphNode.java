@@ -11,14 +11,6 @@ public class GraphNode {
     private boolean isBuffer;
     IStorage storage;
     private final Location location;
-    private List<List<Double>> unavailableIntervals = new ArrayList<>();
-
-
-    public GraphNode(Location location) { // demo constructor voor vehicle object als node mee te geven
-        this.location = location;
-        this.isBuffer = false;
-        this.storage = null;
-    }
 
     public GraphNode(IStorage storage, Location location){
         this.location = location;
@@ -30,9 +22,6 @@ public class GraphNode {
     }
     public boolean isBuffer() {
         return isBuffer;
-    }
-    public void setBuffer(boolean buffer) {
-        isBuffer = buffer;
     }
     public Location getLocation() {
         return location;

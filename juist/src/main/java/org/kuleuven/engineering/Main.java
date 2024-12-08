@@ -5,7 +5,7 @@ public class Main {
         String fileName = "I3_3_1_2_2.json";
         Warehouse warehouse = DataReader.read("./juist/data/"+fileName);
         warehouse.scheduleRequests();
-        // warehouse.writeOperationLog();
+        warehouse.writeOperationLog();
     }
 }
 
