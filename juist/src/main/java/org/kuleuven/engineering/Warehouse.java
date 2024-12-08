@@ -702,8 +702,8 @@ public class Warehouse {
         }
         vehicle.setUnavailableUntil(timeAfterOperation);
         vehicle.moveTo(dest);
-        if (dest.getStorage() instanceof Stack){
-            ((Stack)dest.getStorage()).addBox(request.getBoxID());
+        if (dest.getStorage() instanceof Stack stack){
+            stack.addBox(request.getBoxID());
         }
         // else{
         //     ((Bufferpoint)dest.getStorage()).addBox(request.getBoxID()); // mag weg, niks returnen in storage func ipv string
@@ -796,7 +796,7 @@ public class Warehouse {
             for (Integer stackID : currentVehicle.getMyStackIDs()){
                 int srcID = src.getStorage().getID();
                 int destID = dest.getStorage().getID();
-                if (stackID != srcID && stackID != destID && (currentVehicle.getCurrentNode() == null || (currentVehicle.getCurrentNode() != null && currentVehicle.getCurrentNode().getStorage() instanceof Stack stack && stack.getID() != stackID && graph.getStackByID(stackID).getStorage() instanceof Stack stack2 && !stack2.isFull()))){
+                if (stackID != srcID && stackID != destID && (currentVehicle.getCurrentNode() == null || (currentVehicle.getCurrentNode().getStorage() instanceof Stack stack && stack.getID() != stackID && graph.getStackByID(stackID).getStorage() instanceof Stack stack2 && !stack2.isFull()))){
                     found = true;
                     int time1 = stackIsUsedUntil.get(stackID);
                     int time2 = (int) currentTime;
@@ -815,14 +815,15 @@ public class Warehouse {
         List<GraphNode> requestStacks = new ArrayList<>();
         for (Vehicle vehicle : vehicles){
             for (Integer stackID : vehicle.getMyStackIDs()){
-                if (currentVehicle.getCurrentNode() == null || (currentVehicle.getCurrentNode() != null && currentVehicle.getCurrentNode().getStorage() instanceof Stack stack && stackID != stack.getID())){
+                if (currentVehicle.getCurrentNode() == null || (currentVehicle.getCurrentNode().getStorage() instanceof Stack stack && stackID != stack.getID())){
                     requestStacks.add(graph.getStackByID(stackID));
                 }
             }
         }
         PriorityQueue<GraphNode> nodesByDistance = new PriorityQueue<>((node1, node2) -> {
-            double distance1 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node1.getLocation()) : graph.calculateTime(dest.getLocation(), node1.getLocation());
-            double distance2 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node2.getLocation()) : graph.calculateTime(dest.getLocation(), node2.getLocation());
+            GraphNode node = (status == REQUEST_STATUS.SRC) ? src : dest;
+            double distance1 = graph.calculateTime(node.getLocation(), node1.getLocation());
+            double distance2 = graph.calculateTime(node.getLocation(), node2.getLocation());
             return Double.compare(distance1, distance2);
         });
         nodesByDistance.addAll(graph.getNodes());
@@ -850,8 +851,9 @@ public class Warehouse {
             }
         }
         PriorityQueue<GraphNode> nodesByDistance2 = new PriorityQueue<>((node1, node2) -> {
-            double distance1 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node1.getLocation()) : graph.calculateTime(dest.getLocation(), node1.getLocation());
-            double distance2 = (status == REQUEST_STATUS.SRC) ? graph.calculateTime(src.getLocation(), node2.getLocation()) : graph.calculateTime(dest.getLocation(), node2.getLocation());
+            GraphNode node = (status == REQUEST_STATUS.SRC) ? src : dest;
+            double distance1 = graph.calculateTime(node.getLocation(), node1.getLocation());
+            double distance2 = graph.calculateTime(node.getLocation(), node2.getLocation());
             return Double.compare(distance1, distance2);
         });
         nodesByDistance2.addAll(requestStacks);
