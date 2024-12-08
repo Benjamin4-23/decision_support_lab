@@ -124,7 +124,7 @@ public class Warehouse {
         });
         // verdeel over vehicles
         requests.removeAll(requestListWithoutRelocation);
-        distributeRequests(requestListWithoutRelocation);
+        distributeRequests(requestListWithoutRelocation, true);
         stackToBufferRequestsLoop(0);
     }
 
@@ -142,7 +142,7 @@ public class Warehouse {
             return 0;
         });
         requests.removeAll(requestsCopy);
-        distributeRequests(requestsCopy);
+        distributeRequests(requestsCopy, true);
         stackToBufferRequestsLoop(1);
     }
 
@@ -280,7 +280,7 @@ public class Warehouse {
         }
 
         
-        distributeRequests2(requestsCopy);
+        distributeRequests(requestsCopy, false);
         bufferToStackRequestsLoop(2);
     }
 
@@ -377,95 +377,58 @@ public class Warehouse {
 
 
     // verdeel requests over vehicles op basis van stack load
-    public void distributeRequests(List<Request> requestList){
+    public void distributeRequests(List<Request> requestList, boolean usePickupLocation) {
         // calculate stack load en verdeel over # vehicles:
-        HashMap<Integer, Integer> stackLoad = calculateStackLoad(requestList);
+        HashMap<Integer, Integer> stackLoad = calculateStackLoad(requestList, usePickupLocation);
         int requestsPerVehicle = (requestList.size() / vehicles.size()) + 1;
         List<List<Request>> requestsPerVehicleList = new ArrayList<>();
-        for (Vehicle vehicle : vehicles) {
+        for (int i = 0; i < vehicles.size(); i++) {
             requestsPerVehicleList.add(new ArrayList<>());
         }
-
+    
         // sorteer stackIDs op stackLoad grootte
         List<Integer> stackIDs = new ArrayList<>(stackLoad.keySet());
         stackIDs.sort((s1, s2) -> stackLoad.get(s2).compareTo(stackLoad.get(s1)));
-
+    
         int vehicleIndex = 0;
-        for (Integer stackID : stackIDs){
-            // requestsPerVehicleList bevat voor elk vehicle een lijst van stacks die hij moet aanpakken, deze zijn in het begin nog leeg
-            // ga 1 voor 1 over de stacks en voeg die toe aan een vehicle (stack met meeste requests aan vehicle 1, 2e meeste aan vehicle 2, etc) eens elk vehicle 1 stack heeft, voeg nog een ronde stacks toe aan vehicles die nog niet "requuestsPerVehicle" requests hebbentot alle stacks toegewezen zijn
-            
+        for (Integer stackID : stackIDs) {
             // als een vehicle genoeg requests heeft, ga naar de volgende vehicle
-            while (requestsPerVehicleList.get(vehicleIndex).size() >= requestsPerVehicle){
+            while (requestsPerVehicleList.get(vehicleIndex).size() >= requestsPerVehicle) {
                 vehicleIndex++;
             }
-            List<Request> requestsForStack = requestList.stream().filter(x -> {return ((Stack) x.getPickupLocation().getStorage()).getID() == stackID;}).toList();
+            
+            // Filter requests based on location type
+            List<Request> requestsForStack = requestList.stream()
+                .filter(x -> {
+                    Stack stack = (Stack) (usePickupLocation ? 
+                        x.getPickupLocation().getStorage() : 
+                        x.getPlaceLocation().getStorage());
+                    return stack.getID() == stackID;
+                })
+                .toList();
+                
             requestsPerVehicleList.get(vehicleIndex).addAll(requestsForStack);
             vehicleIndex++;
-            if (vehicleIndex == vehicles.size()){
+            if (vehicleIndex == vehicles.size()) {
                 vehicleIndex = 0;
             }
         }
-
+    
         // geef elk vehicle zijn requests
-        for (int i = 0; i < vehicles.size(); i++){
+        for (int i = 0; i < vehicles.size(); i++) {
             vehicles.get(i).setRequests(requestsPerVehicleList.get(i));
         }
     }
-    public void distributeRequests2(List<Request> requestList){
-        HashMap<Integer, Integer> stackLoad = calculateStackLoad2(requestList);
-        int requestsPerVehicle = (requestList.size() / vehicles.size()) + 1;
-        List<List<Request>> requestsPerVehicleList = new ArrayList<>();
-        for (Vehicle vehicle : vehicles) {
-            requestsPerVehicleList.add(new ArrayList<>());
-        }
-
-        List<Integer> stackIDs = new ArrayList<>(stackLoad.keySet());
-        stackIDs.sort((s1, s2) -> stackLoad.get(s2).compareTo(stackLoad.get(s1)));
-
-        int vehicleIndex = 0;
-        for (Integer stackID : stackIDs){
-            while (requestsPerVehicleList.get(vehicleIndex).size() >= requestsPerVehicle){
-                vehicleIndex++;
-            }
-            List<Request> requestsForStack = requestList.stream().filter(x -> {return ((Stack) x.getPlaceLocation().getStorage()).getID() == stackID;}).toList();
-            requestsPerVehicleList.get(vehicleIndex).addAll(requestsForStack);
-            vehicleIndex++;
-            if (vehicleIndex == vehicles.size()){
-                vehicleIndex = 0;
-            }
-        }
-
-        // geef elk vehicle zijn requests
-        for (int i = 0; i < vehicles.size(); i++){
-            vehicles.get(i).setRequests(requestsPerVehicleList.get(i));
-        }
-    }
-
     // returns a map with the stack id as key and the number of requests for that stack as value
-    public HashMap<Integer, Integer>  calculateStackLoad(List<Request> requestList){
+    public HashMap<Integer, Integer> calculateStackLoad(List<Request> requestList, boolean usePickupLocation) {
         HashMap<Integer, Integer> stackLoad = new HashMap<>();
-        for (Request request : requestList){
-            if (stackLoad.containsKey(((Stack) request.getPickupLocation().getStorage()).getID())){
-                stackLoad.put(((Stack) request.getPickupLocation().getStorage()).getID(), stackLoad.get(((Stack) request.getPickupLocation().getStorage()).getID()) + 1);
-            }
-            else{
-                stackLoad.put(((Stack) request.getPickupLocation().getStorage()).getID(), 1);
-            }
-            
-        }
-        return stackLoad;
-    }
-    public HashMap<Integer, Integer>  calculateStackLoad2(List<Request> requestList){
-        HashMap<Integer, Integer> stackLoad = new HashMap<>();
-        for (Request request : requestList){
-            if (stackLoad.containsKey(((Stack) request.getPlaceLocation().getStorage()).getID())){
-                stackLoad.put(((Stack) request.getPlaceLocation().getStorage()).getID(), stackLoad.get(((Stack) request.getPlaceLocation().getStorage()).getID()) + 1);
-            }
-            else{
-                stackLoad.put(((Stack) request.getPlaceLocation().getStorage()).getID(), 1);
-            }
-            
+        for (Request request : requestList) {
+            Stack stack = (Stack) (usePickupLocation ? 
+                request.getPickupLocation().getStorage() : 
+                request.getPlaceLocation().getStorage());
+                
+            int stackId = stack.getID();
+            stackLoad.merge(stackId, 1, Integer::sum);
         }
         return stackLoad;
     }
