@@ -340,17 +340,25 @@ public class Warehouse {
                     else if (vehicle.getCurrentRequestID() == -1 && requiredExtraCapacity <= 0 && !vehicle.getOpenRequests().isEmpty()) {
                         // begin aan open requests
                         Request request = vehicle.getOpenRequests().get(0);
+                        vehicle.setCurrentOpenRequest(request);
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
                         if (request.isDone()){
                             vehicle.closeRequest(request);
                         }
                     }
                     else if (vehicle.getCurrentRequestID() != -1 && requiredExtraCapacity <= 0 && !vehicle.getOpenRequests().isEmpty()){
-                        // werk open requests af
-                        Request request = vehicle.getOpenRequests().get(0);
+                        // werk open request af
+                        Request request = vehicle.getCurrentOpenRequest();
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
                         if (request.isDone()){
                             vehicle.closeRequest(request);
+                        }
+                        else {
+                            // doos van request opgehaald en nog plaats op vehicle?
+                            if (vehicle.hasBox(request.getBoxID()) && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
+                                vehicle.getOpenRequests().stream().filter(x -> {return x.getID() != vehicle.getCurrentRequestID();}).toList().get(0);
+                                vehicle.setCurrentOpenRequest(request);
+                            }
                         }
                     }
 
