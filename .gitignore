@@ -40,3 +40,4 @@ out/
 ##############################
 .vscode/
 .code-workspace
+*.class

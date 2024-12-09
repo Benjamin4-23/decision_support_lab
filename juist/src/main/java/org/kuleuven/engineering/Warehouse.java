@@ -22,6 +22,7 @@ public class Warehouse {
     private double currentTime = 0;
     private final int loadingSpeed;
     private int round = 0;
+    private long startingTime;
 
     public Warehouse(Graph graph, List<Vehicle> vehicles, List<Request> requests, int loadingSpeed) {
         this.graph = graph;
@@ -39,6 +40,7 @@ public class Warehouse {
     }
 
     public void scheduleRequests() {
+        startingTime = System.currentTimeMillis();
         // doe een ronde requests met topdozen die naar buffer moeten
         scheduleStackToBufferRequestsOfTopBoxes();
         System.out.println("Round 1 done");
@@ -861,6 +863,7 @@ public class Warehouse {
     }
 
     public void writeOperationLog() {
+        long time = System.currentTimeMillis() - startingTime;
         StringBuilder output = new StringBuilder();
         System.out.println("--------------------------------------------------------------------------------------------Writing operation log");
         for (String logEntry : operationLog) {
@@ -873,6 +876,7 @@ public class Warehouse {
             System.out.println(e);
         }
         System.out.println("aantal moves: " + operationLog.size());
+        System.out.println("Computation time(ms): " + time);
     }
 
     @Override
