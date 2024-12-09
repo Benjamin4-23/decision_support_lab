@@ -19,7 +19,6 @@ public class Warehouse {
     private boolean noAvailableTempStack = false;
     private boolean targetStackIsUsed = false;
     private final List<String> operationLog = new ArrayList<>();
-    private final HashMap<String, GraphNode> boxLocationMap = new HashMap<>(); // Map to track box locations
     private double currentTime = 0;
     private final int loadingSpeed;
     private int round = 0;
@@ -29,7 +28,6 @@ public class Warehouse {
         this.vehicles = vehicles;
         this.requests = requests;
         this.loadingSpeed = loadingSpeed;
-        calculateStartingState();
         // find number of stacks
         this.stackIsUsedUntil = new HashMap<>();
         for (GraphNode node : graph.getNodes()){
@@ -38,26 +36,6 @@ public class Warehouse {
             }
         }
         
-    }
-
-    private void calculateStartingState() {
-        this.graph.calculateAllDistances();
-        // boxes die in een stack zitten mappen
-        for (GraphNode node : graph.getNodes()) {
-            if (node.getStorage() instanceof Stack stack) {
-                for (String box : (java.util.Stack<String>)stack.getBoxes()) {
-                    boxLocationMap.put(box, node);
-                }
-            }
-        }
-
-        // boxes in een bufferpoint mappen
-        for (Request request : requests){
-            GraphNode n = request.getPickupLocation();
-            if(n.isBuffer()){
-                boxLocationMap.put(request.getBoxID(), n);
-            }
-        }
     }
 
     public void scheduleRequests() {
@@ -379,7 +357,7 @@ public class Warehouse {
         HashMap<Integer, Integer> stackLoad = calculateStackLoad(requestList, usePickupLocation);
         int requestsPerVehicle = (requestList.size() / vehicles.size()) + 1;
         List<List<Request>> requestsPerVehicleList = new ArrayList<>();
-        for (int i = 0; i < vehicles.size(); i++) {
+        for (Vehicle vehicle : vehicles) {
             requestsPerVehicleList.add(new ArrayList<>());
         }
 
