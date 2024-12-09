@@ -43,21 +43,21 @@ public class Warehouse {
         startingTime = System.currentTimeMillis();
         // doe een ronde requests met topdozen die naar buffer moeten
         scheduleStackToBufferRequestsOfTopBoxes();
-        System.out.println("Round 1 done");
+        // System.out.println("Round 1 done");
         for (Vehicle vehicle : vehicles){
             vehicle.resetStackIDs();
         }
         round++;
         // daarna werk de rest 1 voor 1 af (eerst stack -> buffer requests based on depth)
         scheduleStackToBufferRequests();
-        System.out.println("Round 2 done");
+        // System.out.println("Round 2 done");
         for (Vehicle vehicle : vehicles){
             vehicle.resetStackIDs();
         }
         round++;
         // dan buffer -> stack requests met letten op eindlocaties)
         scheduleBufferToStackRequests();
-        System.out.println("Round 3 done");
+        // System.out.println("Round 3 done");
     }
 
     
@@ -252,7 +252,7 @@ public class Warehouse {
             }
         }
         if (totalFreeSpace < requestsCopy.size()){
-            System.out.println("not enough space for requests");
+            // System.out.println("not enough space for requests");
             return;
         }
 
@@ -296,7 +296,7 @@ public class Warehouse {
                         GraphNode dest = vehicle.getOpenRequests().get(0).getPlaceLocation();
                         List<GraphNode> tempstacks = findNStorage(1, src, dest, REQUEST_STATUS.SIMULATED, vehicle);
                         if (tempstacks.isEmpty()){
-                            System.out.println("waiting for tempstack vehicle " + vehicle.getName());
+                            // System.out.println("waiting for tempstack vehicle " + vehicle.getName());
                             continue;
                         }
                         GraphNode tempStack = tempstacks.get(0);
@@ -540,9 +540,6 @@ public class Warehouse {
             vehicle.setUnavailableUntil(timeAfterOperation);
             vehicle.moveTo(dest);
             String box = stack.removeBox();
-            if (box.equals("B708")){
-                System.out.println("Remove box from stack");
-            }
             vehicle.addBox(box);
             addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.DEST_PU);
             request.setStatus(REQUEST_STATUS.DEST_PU);
@@ -588,7 +585,7 @@ public class Warehouse {
             REQUEST_STATUS status = request.getStatus();
             List<GraphNode> tempStacks = findNStorage(1, src, dest, status, vehicle);
             if (tempStacks.isEmpty()){
-                System.out.println("No availabletemp stack found, waiting...");
+                // System.out.println("No availabletemp stack found, waiting...");
                 noAvailableTempStack = true;
                 return false;
             }
@@ -661,7 +658,7 @@ public class Warehouse {
     private void placeBoxBijDest(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
         GraphNode dest = request.getPlaceLocation();
         if (dest.getStorage() instanceof Stack stack && stack.getFreeSpace() == 0){
-            System.out.println("Stack is full, waiting...");
+            // System.out.println("Stack is full, waiting...");
             return;
         }
         // bereken wanneer hij aan dest is
@@ -727,7 +724,7 @@ public class Warehouse {
         REQUEST_STATUS status = request.getStatus();
         List<GraphNode> tempStacks = findNStorage(1, src, dest, status, vehicle);
         if (tempStacks.isEmpty()){
-            System.out.println("No availabletemp stack found, waiting...");
+            // System.out.println("No availabletemp stack found, waiting...");
             noAvailableTempStack = true;
             return;
         }
@@ -857,7 +854,7 @@ public class Warehouse {
             case DEST_RELOC -> "PL_RELOC";
             default -> "";
         };
-        System.out.println(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
+        // System.out.println(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
         operationLog.add(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
 
     }
