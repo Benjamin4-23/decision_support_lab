@@ -29,7 +29,6 @@ public class Warehouse {
         this.vehicles = vehicles;
         this.requests = requests;
         this.loadingSpeed = loadingSpeed;
-        // find number of stacks
         this.stackIsUsedUntil = new HashMap<>();
         for (GraphNode node : graph.getNodes()){
             if (node.getStorage() instanceof Stack){
@@ -41,67 +40,40 @@ public class Warehouse {
 
     public void scheduleRequests() {
         startingTime = System.currentTimeMillis();
-        // doe een ronde requests met topdozen die naar buffer moeten
+
+        // Finish requests with topboxes that need to be moved to buffer
         scheduleStackToBufferRequestsOfTopBoxes();
-        // System.out.println("Round 1 done");
-        for (Vehicle vehicle : vehicles){
-            vehicle.resetStackIDs();
-        }
+        resetVehicleStackIDs();
         round++;
-        // daarna werk de rest 1 voor 1 af (eerst stack -> buffer requests based on depth)
+
+        // After finishing requests with topboxes that need to be moved to buffer, work on the rest 1 for 1 (stack -> buffer requests based on depth)
         scheduleStackToBufferRequests();
-        // System.out.println("Round 2 done");
-        for (Vehicle vehicle : vehicles){
-            vehicle.resetStackIDs();
-        }
+        resetVehicleStackIDs();
         round++;
-        // dan buffer -> stack requests met letten op eindlocaties)
+
+        // then buffer -> stack requests with attention to end locations
         scheduleBufferToStackRequests();
-        // System.out.println("Round 3 done");
     }
 
     
+    
 
-
+    
 
     private void scheduleStackToBufferRequestsOfTopBoxes() {
-        // zoek requests met topdozen en de dozen op plek onder die request die ook opgehaald moeten worden voor naar buffer te gaan
-        List<Request> requestListWithoutRelocation= new ArrayList<>();
-        List<Request> tempList = new ArrayList<>(requests); 
-        for (Request request : tempList){
-            IStorage storage = request.getPickupLocation().getStorage();
-            if (!request.getPickupLocation().isBuffer() && storage.peek().equals(request.getBoxID()) && request.getPlaceLocation().isBuffer()){
-                requestListWithoutRelocation.add(request);
-                requests.remove(request);
-                // zoek of de doos eronder ook opgehaald moet worden
-                for (int i = 1; i < ((Stack)storage).getBoxesSize(); i++){
-                    String boxIDBelow = ((Stack)storage).peakAtDepth(i);
-                    // als die box ook opgehaald moet worden, voeg die request toe
-                    boolean found = false;
-                    for (Request request2 : tempList){
-                        if (request2.getBoxID().equals(boxIDBelow)){
-                            requestListWithoutRelocation.add(request2);
-                            requests.remove(request2);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found){
-                        break;
-                    }
-                }
-            }
-        }
-        // sorteer op stack depth
-        requestListWithoutRelocation.sort((r1, r2) -> {
-            if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
-                return Integer.compare(stack1.getDepthOfBox(r1.getBoxID()), stack2.getDepthOfBox(r2.getBoxID()));
-            }
-            return 0;
-        });
-        // verdeel over vehicles
+        // find requests with topboxes and the boxes on the location below that request that also need to be picked up to go to buffer
+        List<Request> requestListWithoutRelocation = findTopBoxRequests();
+
+        // remove requests from main list
         requests.removeAll(requestListWithoutRelocation);
+
+        // sort based on stack depth
+        requestListWithoutRelocation = sortRequests(requestListWithoutRelocation);
+        
+        // distribute over vehicles
         distributeRequests(requestListWithoutRelocation, true);
+
+        // finish requests 
         stackToBufferRequestsLoop(0);
     }
 
@@ -233,8 +205,45 @@ public class Warehouse {
             activeRelocations.removeIf(x -> x[3] < currentTime);
         }
     }
-
-
+    
+    private List<Request> findTopBoxRequests(){
+        List<Request> requestListWithoutRelocation= new ArrayList<>();
+        List<Request> tempList = new ArrayList<>(requests); 
+        for (Request request : tempList){
+            IStorage storage = request.getPickupLocation().getStorage();
+            if (!request.getPickupLocation().isBuffer() && storage.peek().equals(request.getBoxID()) && request.getPlaceLocation().isBuffer()){
+                requestListWithoutRelocation.add(request);
+                requests.remove(request);
+                // find if the box below also needs to be picked up
+                for (int i = 1; i < ((Stack)storage).getBoxesSize(); i++){
+                    String boxIDBelow = ((Stack)storage).peakAtDepth(i);
+                    // if that box also needs to be picked up, add that request
+                    boolean found = false;
+                    for (Request request2 : tempList){
+                        if (request2.getBoxID().equals(boxIDBelow)){
+                            requestListWithoutRelocation.add(request2);
+                            requests.remove(request2);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found){
+                        break;
+                    }
+                }
+            }
+        }
+        return requestListWithoutRelocation;
+    }
+    private List<Request> sortRequests(List<Request> requests){
+        requests.sort((r1, r2) -> {
+            if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
+                return Integer.compare(stack1.getDepthOfBox(r1.getBoxID()), stack2.getDepthOfBox(r2.getBoxID()));
+            }
+            return 0;
+        });
+        return requests;
+    }
 
 
 
@@ -317,17 +326,48 @@ public class Warehouse {
                     else if (vehicle.getCurrentRequestID() == -1 && requiredExtraCapacity <= 0 && !vehicle.getOpenRequests().isEmpty()) {
                         // begin aan open requests
                         Request request = vehicle.getOpenRequests().get(0);
+                        vehicle.setCurrentRequestID(request.getID());
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
                         if (request.isDone()){
                             vehicle.closeRequest(request);
                         }
                     }
                     else if (vehicle.getCurrentRequestID() != -1 && requiredExtraCapacity <= 0 && !vehicle.getOpenRequests().isEmpty()){
-                        // werk open requests af
-                        Request request = vehicle.getOpenRequests().get(0);
-                        handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
-                        if (request.isDone()){
-                            vehicle.closeRequest(request);
+                        // als box eerste request opgehaald is kijk of nog een box opgehaald kan worden
+                        final Request finalRequest = vehicle.getOpenRequests().stream().filter(x -> x.getID() == vehicle.getCurrentRequestID()).toList().get(0);
+                        Request currentRequest = finalRequest;
+                        Request nextRequest = null;
+                        if (vehicle.getOpenRequests().size() > 1 && finalRequest.getBoxID().equals(vehicle.getLastBox())){
+                            if (vehicle.getCurrentNode() == finalRequest.getPickupLocation() && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
+                                List<Request> openRequestsSameSrc = vehicle.getOpenRequests().stream().filter(x -> x.getPickupLocation().equals(finalRequest.getPickupLocation()) && !vehicle.hasBox(x.getBoxID())).toList();
+                                if (!openRequestsSameSrc.isEmpty()){
+                                    nextRequest = openRequestsSameSrc.get(0);
+                                }
+                                else {
+                                    List<Request> openRequestsDifferentSrc = vehicle.getOpenRequests().stream().filter(x -> x.getPickupLocation().isBuffer() && !vehicle.hasBox(x.getBoxID())).toList();
+                                    if (!openRequestsDifferentSrc.isEmpty()){
+                                        nextRequest = openRequestsDifferentSrc.get(0);
+                                    }
+                                }
+                            }
+                        }
+                        if (nextRequest != null){
+                            vehicle.setCurrentRequestID(nextRequest.getID());
+                            currentRequest = vehicle.getOpenRequests().stream().filter(x -> x.getID() == vehicle.getCurrentRequestID()).toList().get(0);
+                        }
+
+                        // werk current request af
+                        handleRequest(vehicle, currentRequest, currentTime > 0 ? currentTime-1 : 0, 0);
+                        if (currentRequest.isDone()){
+                            // haal request op die al op vehicle staat
+                            List<Request> openRequests = vehicle.getOpenRequests().stream().filter(x -> vehicle.hasBox(x.getBoxID())).toList();
+                            if (!openRequests.isEmpty()){
+                                vehicle.closeRequestLastRound(currentRequest, openRequests.get(0).getID());
+                            }
+                            else{
+                                vehicle.closeRequest(currentRequest);
+                            }
+
                         }
                     }
 
@@ -845,6 +885,12 @@ public class Warehouse {
         return nodes;
     }
 
+    private void resetVehicleStackIDs() {
+        for (Vehicle vehicle : vehicles){
+            vehicle.resetStackIDs();
+        }
+    }
+
     public void addLogEntry(String vehicleName, Location startLocation, double startTime, Location endLocation, double endTime, String boxId, REQUEST_STATUS type){
         String operation = switch (type){
             case SRC -> "PU";
@@ -854,7 +900,6 @@ public class Warehouse {
             case DEST_RELOC -> "PL_RELOC";
             default -> "";
         };
-        // System.out.println(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
         operationLog.add(vehicleName + ";" + startLocation.getX() + ";"+ startLocation.getY() + ";" + (int) startTime  + ";" + endLocation.getX() + ";" + endLocation.getY()   + ";" + (int)endTime + ";"+ boxId + ";" + operation);
 
     }
@@ -862,7 +907,6 @@ public class Warehouse {
     public void writeOperationLog() {
         long time = System.currentTimeMillis() - startingTime;
         StringBuilder output = new StringBuilder();
-        System.out.println("--------------------------------------------------------------------------------------------Writing operation log");
         for (String logEntry : operationLog) {
             output.append(logEntry+'\n');
             System.out.println(logEntry);

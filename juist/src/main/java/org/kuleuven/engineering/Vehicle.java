@@ -1,9 +1,7 @@
 package org.kuleuven.engineering;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Queue;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -109,6 +107,9 @@ public class Vehicle {
         return carriedBoxes.contains(boxId);
     }
     public String getLastBox(){
+        if (carriedBoxes.isEmpty()){
+            return null;
+        }
         return carriedBoxes.get(carriedBoxes.size() - 1);
     }
     public void resetStackIDs(){
@@ -185,6 +186,10 @@ public class Vehicle {
         else{
             currentRequestID = -1;
         }
+    }
+    public void closeRequestLastRound(Request request, int nextRequestID){
+        openRequests.remove(request);
+        currentRequestID = nextRequestID;
     }
     public void addSimulatedRequest(Request request){
         this.simulatedRequests.add(request);

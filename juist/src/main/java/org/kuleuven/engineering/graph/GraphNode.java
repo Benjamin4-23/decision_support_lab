@@ -1,8 +1,5 @@
 package org.kuleuven.engineering.graph;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.kuleuven.engineering.Bufferpoint;
 import org.kuleuven.engineering.IStorage;
 import org.kuleuven.engineering.Location;
@@ -28,6 +25,14 @@ public class GraphNode {
     }
     public IStorage getStorage() {
         return storage;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof GraphNode graphNode){
+            return graphNode.getLocation().equals(this.getLocation());
+        }
+        return false;
     }
 
 
