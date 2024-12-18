@@ -74,28 +74,28 @@ public class Warehouse {
         distributeRequests(requestListWithoutRelocation, true);
 
         // finish requests 
-        stackToBufferRequestsLoop(0);
+        stackToBufferRequestsLoop(round);
     }
+
 
     private void scheduleStackToBufferRequests() {
-        List<Request> requestsCopy = new ArrayList<>();
-        for (Request request : requests){
-            if (request.getPickupLocation().getStorage() instanceof Stack && request.getPlaceLocation().isBuffer()){
-                requestsCopy.add(request);
-            }
-        }
-        requestsCopy.sort((r1, r2) -> {
-            if (r1.getPickupLocation().getStorage() instanceof Stack stack1 && r2.getPickupLocation().getStorage() instanceof Stack stack2) {
-                return Integer.compare(stack1.getDepthOfBox(r1.getBoxID()), stack2.getDepthOfBox(r2.getBoxID()));
-            }
-            return 0;
-        });
+        // get all remainingrequests that need to be picked up from stack to buffer
+        List<Request> requestsCopy = getStackToBufferRequests(round);
+
+        // remove requests from main list
         requests.removeAll(requestsCopy);
+
+        // sort based on stack depth
+        requestsCopy = sortRequests(requestsCopy);
+
+        // distribute over vehicles
         distributeRequests(requestsCopy, true);
-        stackToBufferRequestsLoop(1);
+
+        // finish requests
+        stackToBufferRequestsLoop(round);
     }
 
-    private void stackToBufferRequestsLoop(int type){
+    private void stackToBufferRequestsLoop(int round){
         // ga naar eerste locatie, check of nog plaats op vehicle, dan naar andere pickup, als vol naar buffer
         // enkel met eerste vehicle
         // while niet alle vehicles hun requests hebben afgerond
@@ -118,13 +118,13 @@ public class Warehouse {
                     boolean hasRequestAvailable = !vehicle.getRequests().isEmpty();
                     boolean getAnotherFirst = firstGetAnother[vehicles.indexOf(vehicle)];
                     if (!getAnotherFirst && hasSpace && notWorkingOnRequest && hasRequestAvailable && vehicle.getOpenRequests().isEmpty()) {
-                        boolean success = vehicle.setNewOpenRequest(stackIsUsedUntil, currentTime, type, false);
+                        boolean success = vehicle.setNewOpenRequest(stackIsUsedUntil, currentTime, round, false);
                         if (!success) continue; // kan hij geen reuest openen omdat de stack waar hij naartoe moet nog gebruikt wordt? wacht
                         Request request = vehicle.getOpenRequests().stream().filter(x -> {return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0);
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
                         
                         // voor eerste ronde liggen alle boxes vanboven dus 1 capacity is voldoende
-                        if (type == 0) firstGetAnother[vehicles.indexOf(vehicle)] = vehicle.getCapacity() > vehicle.getCarriedBoxesCount() && !vehicle.getRequests().isEmpty();
+                        if (round == 0) firstGetAnother[vehicles.indexOf(vehicle)] = vehicle.getCapacity() > vehicle.getCarriedBoxesCount() && !vehicle.getRequests().isEmpty();
                         else {
                             // hier controle tussen capacity en volgende doos zijn depth en kijken of die stack nog niet gebruikt wordt voor relocation
                             List<Request> nextRequests = vehicle.getRequests().stream().toList();
@@ -138,12 +138,12 @@ public class Warehouse {
                     }
 
                     else if (getAnotherFirst){
-                        boolean success = vehicle.setNewOpenRequest(stackIsUsedUntil, currentTime, type, true);
+                        boolean success = vehicle.setNewOpenRequest(stackIsUsedUntil, currentTime, round, true);
                         if (!success) continue; // kan hij geen reuest openen omdat de stack waar hij naartoe moet nog gebruikt wordt? wacht
                         Request request = vehicle.getOpenRequests().stream().filter(x -> {return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0);
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
                         // voor eerste ronde liggen alle boxes vanboven dus 1 capacity is voldoende
-                        if (type == 0) firstGetAnother[vehicles.indexOf(vehicle)] = vehicle.getCapacity() > vehicle.getCarriedBoxesCount() && !vehicle.getRequests().isEmpty();
+                        if (round == 0) firstGetAnother[vehicles.indexOf(vehicle)] = vehicle.getCapacity() > vehicle.getCarriedBoxesCount() && !vehicle.getRequests().isEmpty();
                         else {
                             // hier controle tussen capacity en volgende doos zijn depth
                             List<Request> nextRequests = vehicle.getRequests().stream().toList();
@@ -160,7 +160,7 @@ public class Warehouse {
                         // ga naar buffer en werk de open requests 1 voor 1 af
                         Request request = vehicle.getOpenRequests().stream().filter(x -> {return x.getAssignedVehicle() == vehicle.getID();}).toList().get(0);
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
-                        if (type == 1) {
+                        if (round == 1) {
                             // als hier zit omdat het niet direct de juist doos vasthad, kijk toch nog eens of er nog een doos opgehaald kan worden (als hij nog niet op dest is, anders werk gewoon requests af van reeds opgehaalde dozen)
                             List<Request> nextRequests = vehicle.getRequests().stream().toList();
                             if (!nextRequests.isEmpty()){
@@ -244,7 +244,15 @@ public class Warehouse {
         });
         return requests;
     }
-
+    private List<Request> getStackToBufferRequests(int round){
+        List<Request> requestsCopy = new ArrayList<>();
+        for (Request request : requests){
+            if (request.getPickupLocation().getStorage() instanceof Stack && request.getPlaceLocation().isBuffer()){
+                requestsCopy.add(request);
+            }
+        }
+        return requestsCopy;
+    }
 
 
     
