@@ -23,6 +23,8 @@ public class Warehouse {
     private final int loadingSpeed;
     private int round = 0;
     private long startingTime;
+    private final boolean[] firstGetAnother;
+
 
     public Warehouse(Graph graph, List<Vehicle> vehicles, List<Request> requests, int loadingSpeed) {
         this.graph = graph;
@@ -35,7 +37,7 @@ public class Warehouse {
                 stackIsUsedUntil.put(((Stack) node.getStorage()).getID(), -1);
             }
         }
-        
+        firstGetAnother = new boolean[vehicles.size()];
     }
 
     public void scheduleRequests() {
@@ -77,7 +79,6 @@ public class Warehouse {
         stackToBufferRequestsLoop(round);
     }
 
-
     private void scheduleStackToBufferRequests() {
         // get all remainingrequests that need to be picked up from stack to buffer
         List<Request> requestsCopy = getStackToBufferRequests(round);
@@ -95,21 +96,18 @@ public class Warehouse {
         stackToBufferRequestsLoop(round);
     }
 
-    private void stackToBufferRequestsLoop(int round){
-        // ga naar eerste locatie, check of nog plaats op vehicle, dan naar andere pickup, als vol naar buffer
-        // enkel met eerste vehicle
-        // while niet alle vehicles hun requests hebben afgerond
-        boolean allRequestsDone = true;
-        for (Vehicle vehicle : vehicles){
-            if (!vehicle.getRequests().isEmpty() || !vehicle.getOpenRequests().isEmpty()){
-                allRequestsDone = false;
-                break;
-            }
-        }
-        boolean[] firstGetAnother = new boolean[vehicles.size()];
+    private void fillFirstGetAnother(){
         for (int i = 0; i < vehicles.size(); i++){
             firstGetAnother[i] = false;
         }
+    }
+    private void stackToBufferRequestsLoop(int round){
+        boolean allRequestsDone = false;
+
+        // keep track of whether the vehicle has to get another box first (initialize)
+        fillFirstGetAnother();
+
+
         while (!allRequestsDone){
             for (Vehicle vehicle : vehicles){
                 if (vehicle.isAvailable(currentTime)){
@@ -117,21 +115,27 @@ public class Warehouse {
                     boolean notWorkingOnRequest = vehicle.getCurrentRequestID() == -1;
                     boolean hasRequestAvailable = !vehicle.getRequests().isEmpty();
                     boolean getAnotherFirst = firstGetAnother[vehicles.indexOf(vehicle)];
-                    if (!getAnotherFirst && hasSpace && notWorkingOnRequest && hasRequestAvailable && vehicle.getOpenRequests().isEmpty()) {
+                    boolean hasOpenRequests = !vehicle.getOpenRequests().isEmpty();
+
+                    if (!getAnotherFirst && hasSpace && notWorkingOnRequest && hasRequestAvailable && !hasOpenRequests) {
                         boolean success = vehicle.setNewOpenRequest(stackIsUsedUntil, currentTime, round, false);
-                        if (!success) continue; // kan hij geen reuest openen omdat de stack waar hij naartoe moet nog gebruikt wordt? wacht
+                        if (!success) continue; // can't open request because the stack it needs to go to is still used? wait
                         Request request = vehicle.getOpenRequests().stream().filter(x -> {return x.getID() == vehicle.getCurrentRequestID();}).toList().get(0);
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
                         
-                        // voor eerste ronde liggen alle boxes vanboven dus 1 capacity is voldoende
+                        // check if the vehicle has to get another box first (in round 0 a freespace of 1 is enough )
                         if (round == 0) firstGetAnother[vehicles.indexOf(vehicle)] = vehicle.getCapacity() > vehicle.getCarriedBoxesCount() && !vehicle.getRequests().isEmpty();
                         else {
-                            // hier controle tussen capacity en volgende doos zijn depth en kijken of die stack nog niet gebruikt wordt voor relocation
                             List<Request> nextRequests = vehicle.getRequests().stream().toList();
                             if (!nextRequests.isEmpty()){
-                                int neededCapacity = ((Stack) nextRequests.get(0).getPickupLocation().getStorage()).getDepthOfBox(nextRequests.get(0).getBoxID());
+                                Request nextRequest = nextRequests.get(0);
+                                Stack targetStack = (Stack) nextRequest.getPickupLocation().getStorage();
+                                int neededCapacity = targetStack.getDepthOfBox(nextRequest.getBoxID());
                                 boolean hasEnoughCapacity = (vehicle.getCapacity() - vehicle.getCarriedBoxesCount()) >= neededCapacity;
-                                firstGetAnother[vehicles.indexOf(vehicle)] = stackIsUsedUntil.get(nextRequests.get(0).getPickupLocation().getStorage().getID()) < currentTime && hasEnoughCapacity && !vehicle.getRequests().isEmpty() && vehicle.hasBox(request.getBoxID()) && vehicle.getCurrentNode() != request.getPlaceLocation();
+                                boolean isStackUsed = stackIsUsedUntil.get(nextRequest.getPickupLocation().getStorage().getID()) < currentTime;
+                                boolean isBoxOnVehicle = vehicle.hasBox(nextRequest.getBoxID());
+                                boolean isCurrentNodeNotTargetNode = vehicle.getCurrentNode() != nextRequest.getPlaceLocation();
+                                firstGetAnother[vehicles.indexOf(vehicle)] = isStackUsed && hasEnoughCapacity && isBoxOnVehicle && isCurrentNodeNotTargetNode;
                             }
                             else firstGetAnother[vehicles.indexOf(vehicle)] = false;
                         }
