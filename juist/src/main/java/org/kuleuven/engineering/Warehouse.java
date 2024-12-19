@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.function.Predicate;
 
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
@@ -24,6 +25,7 @@ public class Warehouse {
     private int round = 0;
     private long startingTime;
     private final boolean[] firstGetAnother;
+    private final List<List<Request>> requestsPerVehicleList;
 
     public Warehouse(Graph graph, List<Vehicle> vehicles, List<Request> requests, int loadingSpeed) {
         this.graph = graph;
@@ -37,6 +39,7 @@ public class Warehouse {
             }
         }
         firstGetAnother = new boolean[vehicles.size()];
+        requestsPerVehicleList = new ArrayList<>();
     }
 
     public void scheduleRequests() {
@@ -57,8 +60,6 @@ public class Warehouse {
     }
 
     
-    
-
     
     // round 0 and 1 are the same, just with different priorities
     private void scheduleStackToBufferRequestsOfTopBoxes() {
@@ -235,11 +236,6 @@ public class Warehouse {
     
     
     
-
-
-
-    
-
     // round 2
     private void scheduleBufferToStackRequests() {
         List<Request> requestsCopy = new ArrayList<>(requests);
@@ -286,14 +282,14 @@ public class Warehouse {
                     }
 
                     else if (vehicle.getCurrentRequestID() != -1 && requiredExtraCapacity >= 0 && !vehicle.getOpenSimulatedRequests().isEmpty()){
-                        // werk simulated requests af
+                        // finish simulated requests
                         Request request = vehicle.getOpenSimulatedRequests().get(0);
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
                         if (request.isDone()) vehicle.closeSimulatedRequest(request);
                     }
 
                     else if (vehicle.getCurrentRequestID() == -1 && requiredExtraCapacity <= 0 && !vehicle.getOpenRequests().isEmpty()) {
-                        // begin aan open requests
+                        // begin with open requests
                         Request request = vehicle.getOpenRequests().get(0);
                         vehicle.setCurrentRequestID(request.getID());
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
@@ -302,40 +298,21 @@ public class Warehouse {
 
                     else if (vehicle.getCurrentRequestID() != -1 && requiredExtraCapacity <= 0 && !vehicle.getOpenRequests().isEmpty()){
                         // if box of first request is picked up, check if another box can be picked up
-                        final Request finalVersionOfRequest = vehicle.getOpenRequests().stream().filter(x -> x.getID() == vehicle.getCurrentRequestID()).toList().get(0);
-                        Request currentRequest = finalVersionOfRequest;
-                        Request nextRequest = null;
-                        if (vehicle.getOpenRequests().size() > 1 && finalVersionOfRequest.getBoxID().equals(vehicle.getLastBox())){
-                            if (vehicle.getCurrentNode() == finalVersionOfRequest.getPickupLocation() && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
-                                List<Request> openRequestsSameSrc = vehicle.getOpenRequests().stream().filter(x -> x.getPickupLocation().equals(finalVersionOfRequest.getPickupLocation()) && !vehicle.hasBox(x.getBoxID())).toList();
-                                if (!openRequestsSameSrc.isEmpty()){
-                                    nextRequest = openRequestsSameSrc.get(0);
-                                }
-                                else {
-                                    List<Request> openRequestsDifferentSrc = vehicle.getOpenRequests().stream().filter(x -> x.getPickupLocation().isBuffer() && !vehicle.hasBox(x.getBoxID())).toList();
-                                    if (!openRequestsDifferentSrc.isEmpty()){
-                                        nextRequest = openRequestsDifferentSrc.get(0);
-                                    }
-                                }
-                            }
-                        }
+                        Request currentRequest = vehicle.getOpenRequests().stream().filter(x -> x.getID() == vehicle.getCurrentRequestID()).toList().get(0);
+                        Request nextRequest = findNextRequest(vehicle, currentRequest);
+
                         if (nextRequest != null){
                             vehicle.setCurrentRequestID(nextRequest.getID());
                             currentRequest = vehicle.getOpenRequests().stream().filter(x -> x.getID() == vehicle.getCurrentRequestID()).toList().get(0);
                         }
 
-                        // werk current request af
+                        // handle current request
                         handleRequest(vehicle, currentRequest, currentTime > 0 ? currentTime-1 : 0, 0);
                         if (currentRequest.isDone()){
-                            // haal request op die al op vehicle staat
+                            // handle finished request
                             List<Request> openRequests = vehicle.getOpenRequests().stream().filter(x -> vehicle.hasBox(x.getBoxID())).toList();
-                            if (!openRequests.isEmpty()){
-                                vehicle.closeRequestLastRound(currentRequest, openRequests.get(0).getID());
-                            }
-                            else{
-                                vehicle.closeRequest(currentRequest);
-                            }
-
+                            if (!openRequests.isEmpty()) vehicle.closeRequestLastRound(currentRequest, openRequests.get(0).getID());
+                            else vehicle.closeRequest(currentRequest);
                         }
                     }
 
@@ -378,29 +355,74 @@ public class Warehouse {
         vehicle.addSimulatedRequest(simulatedRequest);
         vehicle.setNewOpenSimulatedRequest();
     }
+    private Request findNextRequest(Vehicle vehicle, Request currentRequest){
+        boolean hasBoxOnVehicle = currentRequest.getBoxID().equals(vehicle.getLastBox());
+        boolean hasEnoughCapacity = vehicle.getCapacity() > vehicle.getCarriedBoxesCount();
+        boolean isCurrentNodeSameAsPickupLocation = vehicle.getCurrentNode() == currentRequest.getPickupLocation();
 
-
+        if (vehicle.getOpenRequests().size() > 1 && hasBoxOnVehicle && isCurrentNodeSameAsPickupLocation && hasEnoughCapacity){
+            Predicate<Request> checkfunction = x -> x.getPickupLocation().equals(currentRequest.getPickupLocation()) && !vehicle.hasBox(x.getBoxID());
+            List<Request> openRequestsSameSrc = vehicle.getOpenRequests().stream().filter(checkfunction).toList();
+            if (!openRequestsSameSrc.isEmpty()) return openRequestsSameSrc.get(0);
+            else {
+                Predicate<Request> checkfunction2 = x -> x.getPickupLocation().isBuffer() && !vehicle.hasBox(x.getBoxID());
+                List<Request> openRequestsDifferentSrc = vehicle.getOpenRequests().stream().filter(checkfunction2).toList();
+                if (!openRequestsDifferentSrc.isEmpty()) return openRequestsDifferentSrc.get(0);
+            }
+        }
+        return null;
+    }
 
 
 
     
-    // verdeel requests over vehicles op basis van stack load
+
+    // distribute requests over vehicles based on stack load    
     public void distributeRequests(List<Request> requestList, boolean usePickupLocation) {
-        // calculate stack load en verdeel over # vehicles:
         HashMap<Integer, Integer> stackLoad = calculateStackLoad(requestList, usePickupLocation);
         int requestsPerVehicle = (requestList.size() / vehicles.size()) + 1;
-        List<List<Request>> requestsPerVehicleList = new ArrayList<>();
-        for (Vehicle vehicle : vehicles) {
-            requestsPerVehicleList.add(new ArrayList<>());
-        }
+        initializeRequestsPerVehicleList();
 
-        // sorteer stackIDs op stackLoad grootte
+        // sort stackIDs based on stackLoad size
         List<Integer> stackIDs = new ArrayList<>(stackLoad.keySet());
         stackIDs.sort((s1, s2) -> stackLoad.get(s2).compareTo(stackLoad.get(s1)));
 
+        // create lists of requests for each vehicle
+        createVehicleRequestLists(requestList, usePickupLocation, requestsPerVehicle, stackIDs);
+
+        // give each vehicle its requests
+        for (int i = 0; i < vehicles.size(); i++) {
+            vehicles.get(i).setRequests(requestsPerVehicleList.get(i));
+        }
+    }
+
+    // returns a map with the stack id as key and the number of requests for that stack as value
+    public HashMap<Integer, Integer> calculateStackLoad(List<Request> requestList, boolean usePickupLocation) {
+        HashMap<Integer, Integer> stackLoad = new HashMap<>();
+        for (Request request : requestList) {
+            Stack stack = (Stack) (usePickupLocation ?
+                request.getPickupLocation().getStorage() :
+                request.getPlaceLocation().getStorage());
+
+            int stackId = stack.getID();
+            stackLoad.merge(stackId, 1, Integer::sum);
+        }
+        return stackLoad;
+    }
+    private void initializeRequestsPerVehicleList(){
+        for (Vehicle vehicle : vehicles) {
+            requestsPerVehicleList.add(new ArrayList<>());
+        }
+    }
+    private void initializeFirstGetAnother(){
+        for (int i = 0; i < vehicles.size(); i++){
+            firstGetAnother[i] = false;
+        }
+    }
+    private void createVehicleRequestLists(List<Request> requestList, boolean usePickupLocation, int requestsPerVehicle, List<Integer> stackIDs){
         int vehicleIndex = 0;
         for (Integer stackID : stackIDs) {
-            // als een vehicle genoeg requests heeft, ga naar de volgende vehicle
+            // if a vehicle has enough requests, go to the next vehicle
             while (requestsPerVehicleList.get(vehicleIndex).size() >= requestsPerVehicle) {
                 vehicleIndex++;
             }
@@ -421,111 +443,99 @@ public class Warehouse {
                 vehicleIndex = 0;
             }
         }
-
-        // geef elk vehicle zijn requests
-        for (int i = 0; i < vehicles.size(); i++) {
-            vehicles.get(i).setRequests(requestsPerVehicleList.get(i));
+    }
+    private void resetVehicleStackIDs() {
+        for (Vehicle vehicle : vehicles){
+            vehicle.resetStackIDs();
         }
     }
-    // returns a map with the stack id as key and the number of requests for that stack as value
-    public HashMap<Integer, Integer> calculateStackLoad(List<Request> requestList, boolean usePickupLocation) {
-        HashMap<Integer, Integer> stackLoad = new HashMap<>();
-        for (Request request : requestList) {
-            Stack stack = (Stack) (usePickupLocation ?
-                request.getPickupLocation().getStorage() :
-                request.getPlaceLocation().getStorage());
+    
 
-            int stackId = stack.getID();
-            stackLoad.merge(stackId, 1, Integer::sum);
-        }
-        return stackLoad;
-    }
 
-    private void initializeFirstGetAnother(){
-        for (int i = 0; i < vehicles.size(); i++){
-            firstGetAnother[i] = false;
-        }
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     private boolean handleRequest(Vehicle vehicle, Request request, double time, int sameDestStackCount){
         Location startLocation = vehicle.getLocation();
         double timeAfterMove = time;
 
         if (request.getStatus() == REQUEST_STATUS.INITIAL){
-            // als het vehicle niet leeg is en bij een stack, probeer vehicle zo veel mogelijk leeg te maken
+            // if vehicle is not empty and at a stack, try to empty vehicle as much as possible
             // check if vehicle got a needed box and is collecting more boxes
             boolean result = leegVehicle(vehicle, startLocation, timeAfterMove, time, request);
-            if (targetStackIsUsed) {
-                targetStackIsUsed = false;
-                return false;
-            }
-            // als dest een stack is en full, dan moet er gerelocate worden of check of meerdere requests ook naar dezelfde stack gaan, zoveel plaats vrijmaken op dest stack, dan al die requests afwerken
+            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+            // if dest is a stack and full, then relocate or check if multiple requests also go to the same stack, so much space is freed on dest stack, 
+            // then all those requests are finished
             if (!result) {
                 result = maakPlaatsVrijOpDest(vehicle, startLocation, timeAfterMove, time, request);
-                if (targetStackIsUsed) {
-                    targetStackIsUsed = false;
-                    return false;
-                }
+                if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
             }
-            // ga naar src en PU
+            // go to src and PU
             if (!result) {
                 PickupSrc(vehicle, startLocation, timeAfterMove, time, request);
-                if (targetStackIsUsed) {
-                    targetStackIsUsed = false;
-                    return false;
-                }
+                if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
             } 
             return true;
         }
 
         if (request.getStatus() == REQUEST_STATUS.SRC){
-           // kijken of relocation nodig (we hebben box niet op vehicle), als vehicle vol en nog niet juiste box, ga naar temp stack
-           boolean result = boxesRelocatenNaarTempStack(vehicle, startLocation, timeAfterMove, timeAfterMove, request);
-           if (noAvailableTempStack) {
-                noAvailableTempStack = false;
-                return false;
-            }
-            if (targetStackIsUsed) {
-                targetStackIsUsed = false;
-                return false;
-            }
-            // anders als vehicle niet vol en nog niet juiste box, probeer nog 1 op te nemen
+            // check if relocation is needed (we don't have the box on vehicle), if vehicle is full and not the correct box, go to temp stack
+            boolean result = boxesRelocatenNaarTempStack(vehicle, startLocation, timeAfterMove, timeAfterMove, request);
+            if (!resetNoAvailableTempStack(noAvailableTempStack)) return false;
+            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+            
+            // if vehicle is not full and not the correct box, try to take 1 more
             if (!result) result = NeemNogEenboxOpBijSrc(vehicle, startLocation, timeAfterMove, time, request);
-            if (targetStackIsUsed) {
-                targetStackIsUsed = false;
-                return false;
-            }
-           // anders naar dest en PL
-           if (!result) placeBoxBijDest(vehicle, startLocation, timeAfterMove, time, request);
-           if (targetStackIsUsed) {
-                targetStackIsUsed = false;
-                return false;
-            }
-           return true;
+            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+
+            // go to dest and PL
+            if (!result) placeBoxBijDest(vehicle, startLocation, timeAfterMove, time, request);
+            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+            return true;
         }
 
         if (request.getStatus() == REQUEST_STATUS.DEST_PU){
-            // als vehicle nog niet vol en sameDestStackCount > 0 en stack.freeSpace < sameDestStackCount+1, probeer nog 1 op te nemen
+            // if vehicle is not full and sameDestStackCount > 0 and stack.freeSpace < sameDestStackCount+1, try to take 1 more
             boolean result = neemNogBoxOpDest(vehicle, startLocation, timeAfterMove, time, request, sameDestStackCount);
-            if (targetStackIsUsed) {
-                targetStackIsUsed = false;
-                return false;
-            }
-            // anders ga naar temp stack
+            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+
+            // go to temp stack
             if (!result) placeAtTempStackDest(vehicle, startLocation, timeAfterMove, time, request);
-            if (noAvailableTempStack) {
-                noAvailableTempStack = false;
-                return false;
-            }
-            if (targetStackIsUsed) {
-                targetStackIsUsed = false;
-                return false;
-            }
+            if (!resetNoAvailableTempStack(noAvailableTempStack)) return false;
+            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
             return true;
         }
+
         return false;
     }
-
+    
+    private boolean checkAndResetTargetStackUsed(boolean condition) {
+        if (condition) {
+            targetStackIsUsed = false;
+            return false;
+        }
+        return true;
+    }
+    private boolean resetNoAvailableTempStack(boolean condition){
+        if (condition){
+            noAvailableTempStack = false;
+            return false;
+        }
+        return true;
+    }
 
 
 
@@ -880,12 +890,6 @@ public class Warehouse {
             }
         }
         return nodes;
-    }
-
-    private void resetVehicleStackIDs() {
-        for (Vehicle vehicle : vehicles){
-            vehicle.resetStackIDs();
-        }
     }
 
     public void addLogEntry(String vehicleName, Location startLocation, double startTime, Location endLocation, double endTime, String boxId, REQUEST_STATUS type){
