@@ -528,11 +528,7 @@ public class Warehouse {
 
 
 
-
-
-
-
-
+    
 
     // helper functions
     private boolean leegVehicle(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
@@ -598,6 +594,149 @@ public class Warehouse {
         addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.SRC);
         request.setStatus(REQUEST_STATUS.SRC);
     }
+    
+    private boolean boxesRelocatenNaarTempStack(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
+        if (!vehicle.hasBox(request.getBoxID()) && vehicle.getCapacity() == vehicle.getCarriedBoxesCount() && vehicle.getCarriedBoxesCount() > 0){
+            String box = vehicle.getLastBox();
+            GraphNode src = request.getPickupLocation();
+            GraphNode dest = request.getPlaceLocation();
+            REQUEST_STATUS status = request.getStatus();
+            List<GraphNode> tempStacks = findNStorage(1, src, dest, status, vehicle);
+            if (tempStacks.isEmpty()){
+                noAvailableTempStack = true;
+                return false;
+            }
+            GraphNode tempStack = tempStacks.get(0);
+            Stack stack = (Stack) tempStack.getStorage();
+            
+            timeAfterMove += graph.getTravelTime(vehicle, tempStack);
+            double timeAfterOperation = timeAfterMove + loadingSpeed;
+
+            // als er al een relocation bezig is van die stack naar hier, wacht tot de andere klaar is met dat request (anders werken ze elkaar tegen)
+            for (Integer[] relocation : activeRelocations){
+                if (relocation[1] == ((Stack) vehicle.getCurrentNode().getStorage()).getID() && relocation[0] == ((Stack) tempStack.getStorage()).getID()){
+                    waitForRequestFinish.put(relocation[2], vehicle.getID());
+                    vehicle.setUnavailableUntil(Double.MAX_VALUE);
+                    noAvailableTempStack = true;
+                    return false;
+                }
+            }
+
+            if (isStackAvailable(stack, currentTime)) stackIsUsedUntil.put(stack.getID(), (int) timeAfterOperation);
+            else return false;
+
+            vehicle.setUnavailableUntil(timeAfterOperation);
+            int prevVehicleLocation = ((Stack) vehicle.getCurrentNode().getStorage()).getID();
+            vehicle.moveTo(tempStack);
+            stack.addBox(box);
+            vehicle.removeBox(box);
+            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, box, REQUEST_STATUS.SRC_RELOC);
+            request.setStatus(REQUEST_STATUS.INITIAL);
+            stackIsUsedUntil.put(((Stack) tempStack.getStorage()).getID(), (int) (timeAfterOperation));
+            activeRelocations.add(new Integer[]{prevVehicleLocation, ((Stack) tempStack.getStorage()).getID(), request.getID(), (int) timeAfterOperation});
+            return true;
+        }
+        return false;
+    }
+    private boolean NeemNogEenboxOpBijSrc(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
+        if (!vehicle.hasBox(request.getBoxID()) && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
+            double timeAfterOperation = timeAfterMove + loadingSpeed;
+            if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
+                if (isStackAvailable(stack, currentTime)) stackIsUsedUntil.put(stack.getID(), (int) timeAfterOperation);
+                else return false;
+            }
+            vehicle.setUnavailableUntil(timeAfterOperation);
+            String box = "";
+            if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
+                box = stack.removeBox();
+                vehicle.addBox(box);
+            }
+            else vehicle.addBox(request.getBoxID());
+            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.SRC);
+            return true;
+        }
+        return false;
+    }
+    private void placeBoxBijDest(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
+        GraphNode dest = request.getPlaceLocation();
+        if (dest.getStorage() instanceof Stack stack && stack.getFreeSpace() == 0){
+            return;
+        }
+        if (startLocation != dest.getLocation()) timeAfterMove += graph.getTravelTime(vehicle, dest);
+        double timeAfterOperation = timeAfterMove + loadingSpeed;
+
+        if (dest.getStorage() instanceof Stack stack){
+            if (isStackAvailable(stack, currentTime)) stackIsUsedUntil.put(stack.getID(), (int) timeAfterOperation);
+            else return;
+        }
+        
+        vehicle.setUnavailableUntil(timeAfterOperation);
+        vehicle.moveTo(dest);
+        if (dest.getStorage() instanceof Stack stack){
+            stack.addBox(request.getBoxID());
+        }
+        vehicle.removeBox(request.getBoxID());
+        addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, request.getBoxID(), REQUEST_STATUS.DEST);
+        request.setStatus(REQUEST_STATUS.DEST);
+    }
+
+    private boolean neemNogBoxOpDest(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request, int sameDestStackCount) {
+        if (vehicle.getCapacity() > vehicle.getCarriedBoxesCount() && sameDestStackCount > 0 && ((Stack)request.getPlaceLocation().getStorage()).getFreeSpace() < sameDestStackCount+1){
+            double timeAfterOperation = timeAfterMove + loadingSpeed;
+            if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
+                if (isStackAvailable(stack, currentTime)) stackIsUsedUntil.put(stack.getID(), (int) timeAfterOperation);
+                else return false;
+            }
+            vehicle.setUnavailableUntil(timeAfterOperation);
+            String box = "";
+            if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
+                box = stack.removeBox();
+                vehicle.addBox(box);
+            }
+            else vehicle.addBox(request.getBoxID());
+            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.DEST_PU);
+            return true;
+        }
+        return false;
+    }
+    private void placeAtTempStackDest(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
+        String box = vehicle.getLastBox();
+        GraphNode src = request.getPickupLocation();
+        GraphNode dest = request.getPlaceLocation();
+        REQUEST_STATUS status = request.getStatus();
+        List<GraphNode> tempStacks = findNStorage(1, src, dest, status, vehicle);
+        if (tempStacks.isEmpty()){
+            noAvailableTempStack = true;
+            return;
+        }
+        GraphNode tempStack = tempStacks.get(0);
+        Stack stack = (Stack) tempStack.getStorage();
+        timeAfterMove += graph.getTravelTime(vehicle, tempStack);
+        double timeAfterOperation = timeAfterMove + loadingSpeed;
+
+        for (Integer[] relocation : activeRelocations){
+            if (relocation[1] == ((Stack) vehicle.getCurrentNode().getStorage()).getID() && relocation[0] == ((Stack) tempStack.getStorage()).getID()){
+                waitForRequestFinish.put(relocation[2], vehicle.getID());
+                vehicle.setUnavailableUntil(Double.MAX_VALUE);
+                noAvailableTempStack = true;
+                return;
+            }
+        }
+
+        if (isStackAvailable(stack, currentTime)) stackIsUsedUntil.put(stack.getID(), (int) timeAfterOperation);
+        else return;
+        vehicle.setUnavailableUntil(timeAfterOperation);
+        
+        int prevVehicleLocation = ((Stack) vehicle.getCurrentNode().getStorage()).getID();
+        vehicle.moveTo(tempStack);
+        stack.addBox(box);
+        vehicle.removeBox(box);
+        addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, box, REQUEST_STATUS.DEST_RELOC);
+        request.setStatus(REQUEST_STATUS.INITIAL);
+        stackIsUsedUntil.put(((Stack) tempStack.getStorage()).getID(), (int) (timeAfterOperation));
+        activeRelocations.add(new Integer[]{prevVehicleLocation, ((Stack) tempStack.getStorage()).getID(), request.getID(), (int) timeAfterOperation});
+    }
+
     private boolean isStackAvailable(Stack stack, double time) {
         if (stackIsUsedUntil.get(stack.getID()) < time) return true;
         targetStackIsUsed = true;
@@ -613,237 +752,72 @@ public class Warehouse {
     }
     
 
-    private boolean boxesRelocatenNaarTempStack(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
-        if (!vehicle.hasBox(request.getBoxID()) && vehicle.getCapacity() == vehicle.getCarriedBoxesCount() && vehicle.getCarriedBoxesCount() > 0){
-            String box = vehicle.getLastBox();
-            // move to temp stack
-            GraphNode src = request.getPickupLocation();
-            GraphNode dest = request.getPlaceLocation();
-            REQUEST_STATUS status = request.getStatus();
-            List<GraphNode> tempStacks = findNStorage(1, src, dest, status, vehicle);
-            if (tempStacks.isEmpty()){
-                // System.out.println("No availabletemp stack found, waiting...");
-                noAvailableTempStack = true;
-                return false;
-            }
-            GraphNode tempStack = tempStacks.get(0); //voorlopig per 1 relocaten
-            
-            timeAfterMove += graph.getTravelTime(vehicle, tempStack);
-            double timeAfterOperation = timeAfterMove + loadingSpeed;
-
-            // als er al een relocation bezig is van die stack naar hier, wacht tot de andere klaar is met dat request (anders werken ze elkaar tegen)
-            for (Integer[] relocation : activeRelocations){
-                if (relocation[1] == ((Stack) vehicle.getCurrentNode().getStorage()).getID() && relocation[0] == ((Stack) tempStack.getStorage()).getID()){
-                    waitForRequestFinish.put(relocation[2], vehicle.getID());
-                    vehicle.setUnavailableUntil(Double.MAX_VALUE);
-                    noAvailableTempStack = true;
-                    return false;
-                }
-            }
-
-
-            if (stackIsUsedUntil.get(tempStack.getStorage().getID()) < currentTime){
-                stackIsUsedUntil.put(tempStack.getStorage().getID(), (int) timeAfterOperation);
-            }
-            else {
-                targetStackIsUsed = true;
-                return false;
-            }
-            vehicle.setUnavailableUntil(timeAfterOperation);
-            int prevVehicleLocation = ((Stack) vehicle.getCurrentNode().getStorage()).getID();
-            vehicle.moveTo(tempStack);
-            if (tempStack.getStorage() instanceof Stack stack){
-                stack.addBox(box);
-            }
-            vehicle.removeBox(box);
-            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, box, REQUEST_STATUS.SRC_RELOC);
-            request.setStatus(REQUEST_STATUS.INITIAL);
-            stackIsUsedUntil.put(((Stack) tempStack.getStorage()).getID(), (int) (timeAfterOperation));
-            activeRelocations.add(new Integer[]{prevVehicleLocation, ((Stack) tempStack.getStorage()).getID(), request.getID(), (int) timeAfterOperation});
-            return true;
-        }
-        return false;
-    }
-    private boolean NeemNogEenboxOpBijSrc(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
-        if (!vehicle.hasBox(request.getBoxID()) && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
-            // probeer nog 1 op te nemen
-            double timeAfterOperation = timeAfterMove + loadingSpeed;
-            if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
-                if (stackIsUsedUntil.get(stack.getID()) < currentTime){
-                    stackIsUsedUntil.put(stack.getID(), (int) timeAfterOperation);
-                }
-                else {
-                    targetStackIsUsed = true;
-                    return false;
-                }
-            }
-            vehicle.setUnavailableUntil(timeAfterOperation);
-            String box = "";
-            if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
-                box = stack.removeBox();
-                vehicle.addBox(box);
-            }
-            else{
-                // box = ((Bufferpoint)src.getStorage()).removeBox();
-                vehicle.addBox(request.getBoxID());
-            }
-            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.SRC);
-            return true;
-        }
-        return false;
-    }
-    private void placeBoxBijDest(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
-        GraphNode dest = request.getPlaceLocation();
-        if (dest.getStorage() instanceof Stack stack && stack.getFreeSpace() == 0){
-            // System.out.println("Stack is full, waiting...");
-            return;
-        }
-        // bereken wanneer hij aan dest is
-        if (startLocation != dest.getLocation()){
-            timeAfterMove += graph.getTravelTime(vehicle, dest);
-        }
-        // bereken wanneer hij klaar zou zijn met pickup
-        double timeAfterOperation = timeAfterMove + loadingSpeed;
-        // als hier geraakt dan kan hij naar dest en PL doen
-        if (dest.getStorage() instanceof Stack stack){
-            if (stackIsUsedUntil.get(stack.getID()) < currentTime){
-                stackIsUsedUntil.put(stack.getID(), (int) timeAfterOperation);
-            }
-            else {
-                targetStackIsUsed = true;
-                return;
-            }
-        }
-        vehicle.setUnavailableUntil(timeAfterOperation);
-        vehicle.moveTo(dest);
-        if (dest.getStorage() instanceof Stack stack){
-            stack.addBox(request.getBoxID());
-        }
-        // else{
-        //     ((Bufferpoint)dest.getStorage()).addBox(request.getBoxID()); // mag weg, niks returnen in storage func ipv string
-        // }
-        vehicle.removeBox(request.getBoxID());
-        addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, request.getBoxID(), REQUEST_STATUS.DEST);
-        request.setStatus(REQUEST_STATUS.DEST);
-    }
-
-    private boolean neemNogBoxOpDest(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request, int sameDestStackCount) {
-        if (vehicle.getCapacity() > vehicle.getCarriedBoxesCount() && sameDestStackCount > 0 && ((Stack)request.getPlaceLocation().getStorage()).getFreeSpace() < sameDestStackCount+1){
-            // probeer nog 1 op te nemen
-            double timeAfterOperation = timeAfterMove + loadingSpeed;
-            if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
-                if (stackIsUsedUntil.get(stack.getID()) < currentTime){
-                    stackIsUsedUntil.put(stack.getID(), (int) timeAfterOperation);
-                }
-                else {
-                    targetStackIsUsed = true;
-                    return false;
-                }
-            }
-            vehicle.setUnavailableUntil(timeAfterOperation);
-            String box = "";
-            if (vehicle.getCurrentNode().getStorage() instanceof Stack stack){
-                box = stack.removeBox();
-                vehicle.addBox(box);
-            }
-            else{
-                vehicle.addBox(request.getBoxID());
-            }
-            addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, vehicle.getLastBox(), REQUEST_STATUS.DEST_PU);
-            return true;
-        }
-        return false;
-    }
-    private void placeAtTempStackDest(Vehicle vehicle, Location startLocation, double timeAfterMove, double time, Request request) {
-        String box = vehicle.getLastBox();
-        GraphNode src = request.getPickupLocation();
-        GraphNode dest = request.getPlaceLocation();
-        REQUEST_STATUS status = request.getStatus();
-        List<GraphNode> tempStacks = findNStorage(1, src, dest, status, vehicle);
-        if (tempStacks.isEmpty()){
-            // System.out.println("No availabletemp stack found, waiting...");
-            noAvailableTempStack = true;
-            return;
-        }
-        GraphNode tempStack = tempStacks.get(0); //voorlopig per 1 relocaten dus remove niet nodig aangezien lijst niet meer nodig
-        timeAfterMove += graph.getTravelTime(vehicle, tempStack);
-        double timeAfterOperation = timeAfterMove + loadingSpeed;
-
-        // als er al een relocation bezig is van die stack naar hier, wacht tot de andere klaar is met dat request (anders werken ze elkaar tegen)
-        for (Integer[] relocation : activeRelocations){
-            if (relocation[1] == ((Stack) vehicle.getCurrentNode().getStorage()).getID() && relocation[0] == ((Stack) tempStack.getStorage()).getID()){
-                waitForRequestFinish.put(relocation[2], vehicle.getID());
-                vehicle.setUnavailableUntil(Double.MAX_VALUE);
-                noAvailableTempStack = true;
-                return;
-            }
-        }
-
-        if (stackIsUsedUntil.get(tempStack.getStorage().getID()) < currentTime){
-            stackIsUsedUntil.put(tempStack.getStorage().getID(), (int) timeAfterOperation);
-        }
-        else {
-            targetStackIsUsed = true;
-            return;
-        }
-        vehicle.setUnavailableUntil(timeAfterOperation);
-        
-        int prevVehicleLocation = ((Stack) vehicle.getCurrentNode().getStorage()).getID();
-        vehicle.moveTo(tempStack);
-        tempStack.getStorage().addBox(box);
-        vehicle.removeBox(box);
-        addLogEntry(vehicle.getName(), startLocation, time, vehicle.getLocation(), timeAfterOperation, box, REQUEST_STATUS.DEST_RELOC);
-        request.setStatus(REQUEST_STATUS.INITIAL);
-        stackIsUsedUntil.put(((Stack) tempStack.getStorage()).getID(), (int) (timeAfterOperation));
-        activeRelocations.add(new Integer[]{prevVehicleLocation, ((Stack) tempStack.getStorage()).getID(), request.getID(), (int) timeAfterOperation});
-    }
-
-
-
-
-
-
-
-
-
 
 
 
 
     private List<GraphNode> findNStorage(int N, GraphNode src, GraphNode dest, REQUEST_STATUS status, Vehicle currentVehicle){
         if(N == 0) return null;
-        List<GraphNode> nodes = new ArrayList<>();
+        
+        // check if current vehicle can go to one of its own stacks (to avoid interference with other vehicles)
+        List<GraphNode> accessibleStacks = findOwnAccessibleStacks(currentVehicle, src, dest);
+        if (!accessibleStacks.isEmpty()) return accessibleStacks;
+        
+        // find stack that no vehicle has requests for
+        List<GraphNode> requestStacks = findAvailableStack(currentVehicle, src, dest, status);
+        if (!requestStacks.isEmpty()) return requestStacks;
 
-        if (round == 1 || round == 2){
-            boolean found = false;
-            // kijk of hij naar één van zijn eigen stacks kan gaan waar hij nu niet staat
-            for (Integer stackID : currentVehicle.getMyStackIDs()){
-                int srcID = src.getStorage().getID();
-                int destID = dest.getStorage().getID();
-                if (stackID != srcID && stackID != destID && (currentVehicle.getCurrentNode() == null || (currentVehicle.getCurrentNode().getStorage() instanceof Stack stack && stack.getID() != stackID && graph.getStackByID(stackID).getStorage() instanceof Stack stack2 && !stack2.isFull()))){
-                    found = true;
-                    int time1 = stackIsUsedUntil.get(stackID);
-                    int time2 = (int) currentTime;
-                    boolean stackIsUsed = time1 < time2;
-                    if (stackIsUsed){
-                        nodes.add(graph.getStackByID(stackID));
-                        return nodes;
-                    }
+        // find stack that is in request of other vehicles
+        List<GraphNode> remainingStacks = findOtherVehicleStacks(currentVehicle, src, dest, status);
+        return remainingStacks;
+    }
+
+    private List<GraphNode> findOwnAccessibleStacks(Vehicle currentVehicle, GraphNode src, GraphNode dest) {
+        List<GraphNode> accessibleStacks = new ArrayList<>();
+        for (Integer stackID : currentVehicle.getMyStackIDs()) {
+            int srcID = src.getStorage().getID();
+            int destID = dest.getStorage().getID();
+            boolean notSrcOrDest = stackID != srcID && stackID != destID;
+            boolean notCurrentlyAtNode = currentVehicle.getCurrentNode() == null;
+            boolean currentNodeIsStack = currentVehicle.getCurrentNode().getStorage() instanceof Stack;
+            Stack currentNodeStack = currentNodeIsStack ? (Stack) currentVehicle.getCurrentNode().getStorage() : null;
+            Stack stack2 = (Stack) graph.getStackByID(stackID).getStorage();
+
+            
+            if (notSrcOrDest && ( notCurrentlyAtNode || (currentNodeIsStack && currentNodeStack.getID() != stackID && !stack2.isFull()))) {
+                int time1 = stackIsUsedUntil.get(stackID);
+                int time2 = (int) currentTime;
+                boolean stackIsUsed = time1 < time2;
+                if (stackIsUsed) {
+                    accessibleStacks.add(graph.getStackByID(stackID));
                 }
             }
-            if (found) return nodes;
         }
-        
-
-        // zoek naar stack nooit meer requests voorkomt
+        return accessibleStacks;
+    }
+    private List<GraphNode> findRequestStacks(Vehicle currentVehicle, GraphNode src, GraphNode dest, int type) {
         List<GraphNode> requestStacks = new ArrayList<>();
-        for (Vehicle vehicle : vehicles){
-            for (Integer stackID : vehicle.getMyStackIDs()){
-                if (currentVehicle.getCurrentNode() == null || (currentVehicle.getCurrentNode().getStorage() instanceof Stack stack && stackID != stack.getID())){
+        for (Vehicle vehicle : vehicles) {
+            if (type == 2 && vehicle == currentVehicle) continue;
+            for (Integer stackID : vehicle.getMyStackIDs()) {
+                if (currentVehicle.getCurrentNode() == null || isDifferentStack(currentVehicle, stackID)) {
                     requestStacks.add(graph.getStackByID(stackID));
                 }
             }
         }
+        return requestStacks;
+    }
+    private boolean isDifferentStack(Vehicle currentVehicle, Integer stackID) {
+        return currentVehicle.getCurrentNode().getStorage() instanceof Stack stack && stackID != stack.getID();
+    }
+    private boolean isValidNode(GraphNode node, GraphNode src, GraphNode dest, List<GraphNode> requestStacks) {
+        return !(node == src || node == dest || requestStacks.contains(node)) && node.getStorage() instanceof Stack stack && !stack.isFull();
+    }
+    private List<GraphNode> findAvailableStack(Vehicle currentVehicle, GraphNode src, GraphNode dest, REQUEST_STATUS status) {
+        // find stack that no vehicle has requests for
+        List<GraphNode> requestStacks = findRequestStacks(currentVehicle, src, dest,1);
+
+        // find stack that is closest to src or dest
         PriorityQueue<GraphNode> nodesByDistance = new PriorityQueue<>((node1, node2) -> {
             GraphNode node = (status == REQUEST_STATUS.SRC) ? src : dest;
             double distance1 = graph.calculateTime(node.getLocation(), node1.getLocation());
@@ -851,29 +825,24 @@ public class Warehouse {
             return Double.compare(distance1, distance2);
         });
         nodesByDistance.addAll(graph.getNodes());
-        boolean found = false;
-        for (GraphNode node : nodesByDistance){
-            if(!(node == src || node == dest || requestStacks.contains(node)) && node.getStorage() instanceof Stack stack && !stack.isFull()){
-                found = true;
-                if ((stackIsUsedUntil.get(stack.getID()) < currentTime) || status == REQUEST_STATUS.SIMULATED){
+
+        List<GraphNode> nodes = new ArrayList<>();
+        for (GraphNode node : nodesByDistance) {
+            if (isValidNode(node, src, dest, requestStacks)) {
+                Stack stack = (Stack) node.getStorage();
+                if ((stackIsUsedUntil.get(stack.getID()) < currentTime) || status == REQUEST_STATUS.SIMULATED) {
                     nodes.add(node);
                     return nodes;
                 }
             }
         }
-        if (found) return nodes; // return lege lijst als vehicle moet wachten tot een temp stack vrij is
-        
+        return nodes; 
+    }
+    private List<GraphNode> findOtherVehicleStacks(Vehicle currentVehicle, GraphNode src, GraphNode dest, REQUEST_STATUS status) {
+        List<GraphNode> nodes = new ArrayList<>();
+        List<GraphNode> requestStacks = findRequestStacks(currentVehicle, src, dest, 2);
 
-        // zoek naar stack die in request van ander vehicle voorkomt
-        requestStacks = new ArrayList<>();
-        for (Vehicle vehicle : vehicles){
-            if (vehicle == currentVehicle) continue;
-            for (Integer stackID : vehicle.getMyStackIDs()){
-                if (currentVehicle.getCurrentNode() == null || (currentVehicle.getCurrentNode() != null && currentVehicle.getCurrentNode().getStorage() instanceof Stack stack && stack.getID() != stackID)){
-                    requestStacks.add(graph.getStackByID(stackID));
-                }
-            }
-        }
+        // find stack that is closest to src or dest
         PriorityQueue<GraphNode> nodesByDistance2 = new PriorityQueue<>((node1, node2) -> {
             GraphNode node = (status == REQUEST_STATUS.SRC) ? src : dest;
             double distance1 = graph.calculateTime(node.getLocation(), node1.getLocation());
@@ -881,6 +850,8 @@ public class Warehouse {
             return Double.compare(distance1, distance2);
         });
         nodesByDistance2.addAll(requestStacks);
+
+        
         for (GraphNode node : nodesByDistance2){
             if(!(node == src || node == dest) && node.getStorage() instanceof Stack stack && !stack.isFull()){
                 if (stackIsUsedUntil.get(stack.getID()) < currentTime){
@@ -891,6 +862,9 @@ public class Warehouse {
         }
         return nodes;
     }
+
+
+
 
     public void addLogEntry(String vehicleName, Location startLocation, double startTime, Location endLocation, double endTime, String boxId, REQUEST_STATUS type){
         String operation = switch (type){
@@ -934,5 +908,4 @@ public class Warehouse {
         return sb.toString();
     }
 
-    
 }
