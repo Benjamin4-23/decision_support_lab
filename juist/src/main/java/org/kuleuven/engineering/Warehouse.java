@@ -150,7 +150,7 @@ public class Warehouse {
             // loop over vehicles and check if they all have an empty requestlist
             allRequestsDone = checkIfAllRequestsDone();
 
-            currentTime++;
+            if (!allRequestsDone) currentTime++;
 
             // remove all relocations that are done
             activeRelocations.removeIf(x -> x[3] < currentTime);
@@ -263,7 +263,7 @@ public class Warehouse {
             for (Vehicle vehicle : vehicles){
                 if (vehicle.isAvailable(currentTime) && (!vehicle.getRequests().isEmpty() || !vehicle.getOpenRequests().isEmpty())){
                     if (!vehicle.getRequests().isEmpty() && vehicle.getOpenRequests().isEmpty()){
-                        // open requests met zelfde dest
+                        // open requests with same destination
                         Location dest = vehicle.getRequests().get(0).getPlaceLocation().getLocation();
                         List<Request> requestsWithSameDest = vehicle.getRequests().stream().filter(x -> {return x.getPlaceLocation().getLocation() == dest;}).toList();
                         for (Request request : requestsWithSameDest){
@@ -272,53 +272,42 @@ public class Warehouse {
                         }
                     }
 
-                    // bereken hoeveel plaats nog nodig op dest stack
+                    // calculate how much space is still needed on dest stack
                     int neededCapacity = vehicle.getOpenRequests().size();
                     Stack stack  = (Stack) vehicle.getOpenRequests().get(0).getPlaceLocation().getStorage();
                     int freeSpace = stack.getFreeSpace();
                     int requiredExtraCapacity = neededCapacity - freeSpace;
 
                     if (vehicle.getCurrentRequestID() == -1 && requiredExtraCapacity > 0){
-                        // maak simulated request om topbox te verplaatsen naar tempstack
-                        GraphNode src = vehicle.getOpenRequests().get(0).getPickupLocation();
-                        GraphNode dest = vehicle.getOpenRequests().get(0).getPlaceLocation();
-                        List<GraphNode> tempstacks = findNStorage(1, src, dest, REQUEST_STATUS.SIMULATED, vehicle);
-                        if (tempstacks.isEmpty()){
-                            // System.out.println("waiting for tempstack vehicle " + vehicle.getName());
-                            continue;
-                        }
-                        GraphNode tempStack = tempstacks.get(0);
-                        Request simulatedRequest = new Request(vehicle.getOpenRequests().get(0).getPlaceLocation(), tempStack, Integer.MAX_VALUE-(vehicle.getSimulatedRequests().size()+vehicle.getOpenRequests().size()), stack.peek());
-                        vehicle.addSimulatedRequest(simulatedRequest);
-                        vehicle.setNewOpenSimulatedRequest();
+                        // make simulated request to move topbox to tempstack to make space on dest stack
+                        makeSimulatedRequest(vehicle, stack);
                         Request request = vehicle.getOpenSimulatedRequests().get(0);
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
                     }
+
                     else if (vehicle.getCurrentRequestID() != -1 && requiredExtraCapacity >= 0 && !vehicle.getOpenSimulatedRequests().isEmpty()){
                         // werk simulated requests af
                         Request request = vehicle.getOpenSimulatedRequests().get(0);
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
-                        if (request.isDone()){
-                            vehicle.closeSimulatedRequest(request);
-                        }
+                        if (request.isDone()) vehicle.closeSimulatedRequest(request);
                     }
+
                     else if (vehicle.getCurrentRequestID() == -1 && requiredExtraCapacity <= 0 && !vehicle.getOpenRequests().isEmpty()) {
                         // begin aan open requests
                         Request request = vehicle.getOpenRequests().get(0);
                         vehicle.setCurrentRequestID(request.getID());
                         handleRequest(vehicle, request, currentTime > 0 ? currentTime-1 : 0, 0);
-                        if (request.isDone()){
-                            vehicle.closeRequest(request);
-                        }
+                        if (request.isDone()) vehicle.closeRequest(request);
                     }
+
                     else if (vehicle.getCurrentRequestID() != -1 && requiredExtraCapacity <= 0 && !vehicle.getOpenRequests().isEmpty()){
-                        // als box eerste request opgehaald is kijk of nog een box opgehaald kan worden
-                        final Request finalRequest = vehicle.getOpenRequests().stream().filter(x -> x.getID() == vehicle.getCurrentRequestID()).toList().get(0);
-                        Request currentRequest = finalRequest;
+                        // if box of first request is picked up, check if another box can be picked up
+                        final Request finalVersionOfRequest = vehicle.getOpenRequests().stream().filter(x -> x.getID() == vehicle.getCurrentRequestID()).toList().get(0);
+                        Request currentRequest = finalVersionOfRequest;
                         Request nextRequest = null;
-                        if (vehicle.getOpenRequests().size() > 1 && finalRequest.getBoxID().equals(vehicle.getLastBox())){
-                            if (vehicle.getCurrentNode() == finalRequest.getPickupLocation() && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
-                                List<Request> openRequestsSameSrc = vehicle.getOpenRequests().stream().filter(x -> x.getPickupLocation().equals(finalRequest.getPickupLocation()) && !vehicle.hasBox(x.getBoxID())).toList();
+                        if (vehicle.getOpenRequests().size() > 1 && finalVersionOfRequest.getBoxID().equals(vehicle.getLastBox())){
+                            if (vehicle.getCurrentNode() == finalVersionOfRequest.getPickupLocation() && vehicle.getCapacity() > vehicle.getCarriedBoxesCount()){
+                                List<Request> openRequestsSameSrc = vehicle.getOpenRequests().stream().filter(x -> x.getPickupLocation().equals(finalVersionOfRequest.getPickupLocation()) && !vehicle.hasBox(x.getBoxID())).toList();
                                 if (!openRequestsSameSrc.isEmpty()){
                                     nextRequest = openRequestsSameSrc.get(0);
                                 }
@@ -353,16 +342,9 @@ public class Warehouse {
                 }
             }
 
-            // loop over vehicles en kijk of ze allemaal een lege requestlist hebben
-            allRequestsDone = true;
-            for (Vehicle vehicle : vehicles){
-                if (!vehicle.getRequests().isEmpty() || !vehicle.getOpenRequests().isEmpty()){
-                    allRequestsDone = false;
-                    break;
-                }
-            }
-
-            currentTime++;
+            
+            allRequestsDone = checkIfAllRequestsDone();
+            if (!allRequestsDone) currentTime++;
             activeRelocations.removeIf(x -> x[3] < currentTime);
         }
 
@@ -383,9 +365,25 @@ public class Warehouse {
         }
         return true;
     }
+    private void makeSimulatedRequest(Vehicle vehicle, Stack stack){
+        GraphNode src = vehicle.getOpenRequests().get(0).getPickupLocation();
+        GraphNode dest = vehicle.getOpenRequests().get(0).getPlaceLocation();
+        List<GraphNode> tempstacks = findNStorage(1, src, dest, REQUEST_STATUS.SIMULATED, vehicle);
+        if (tempstacks.isEmpty()){
+            return;
+        }
+        GraphNode tempStack = tempstacks.get(0);
+        int newID = Integer.MAX_VALUE-(vehicle.getSimulatedRequests().size()+vehicle.getOpenRequests().size());
+        Request simulatedRequest = new Request(dest, tempStack, newID, stack.peek());
+        vehicle.addSimulatedRequest(simulatedRequest);
+        vehicle.setNewOpenSimulatedRequest();
+    }
 
 
 
+
+
+    
     // verdeel requests over vehicles op basis van stack load
     public void distributeRequests(List<Request> requestList, boolean usePickupLocation) {
         // calculate stack load en verdeel over # vehicles:
