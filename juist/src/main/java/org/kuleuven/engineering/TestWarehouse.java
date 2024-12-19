@@ -15,7 +15,7 @@ public class TestWarehouse {
             System.out.printf("\033[33mRunning file %s!\033[0m %n", f.getName());
             Warehouse warehouse = DataReader.read(f.getPath());
             warehouse.scheduleRequests();
-            warehouse.writeOperationLog();
+            warehouse.writeOperationLog("./output.txt");
 
             if (files.indexOf(f) != files.size()-1){
                 System.out.print("Press enter to run next file with name: "+files.get(files.indexOf(f)+1).getName());

@@ -1,6 +1,9 @@
 package org.kuleuven.engineering;
 
+import java.io.File;
 import java.io.FileWriter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -267,14 +270,14 @@ public class Warehouse {
 
     }
 
-    public void writeOperationLog() {
+    public void writeOperationLog(String out) {
         long time = System.currentTimeMillis() - startingTime;
         StringBuilder output = new StringBuilder();
         for (String logEntry : operationLog) {
             output.append(logEntry+'\n');
             System.out.println(logEntry);
         }
-        try(FileWriter fw = new FileWriter("output.txt")){
+        try(FileWriter fw = new FileWriter(out)){
             fw.write("%vehicle;startx;starty;starttime;endx;endy;endtime;box;operation\n"+output);
         } catch (Exception e){
             System.out.println(e);
