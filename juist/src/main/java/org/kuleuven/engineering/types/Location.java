@@ -1,4 +1,4 @@
-package org.kuleuven.engineering;
+package org.kuleuven.engineering.types;
 
 import java.util.Objects;
 

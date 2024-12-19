@@ -1,5 +1,7 @@
 package org.kuleuven.engineering;
 
+import org.kuleuven.engineering.dataReading.DataReader;
+
 public class Main {
     public static void main(String[] args) {
         String fileName = "I3_3_1_2_2.json";

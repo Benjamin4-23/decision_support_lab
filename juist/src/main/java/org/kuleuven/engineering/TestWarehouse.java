@@ -5,6 +5,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner; 
 
+import org.kuleuven.engineering.dataReading.DataReader;
+
 public class TestWarehouse {
     public static void main(String[] args) {
         List<File> files = Arrays.asList(new File("./juist/data/").listFiles());

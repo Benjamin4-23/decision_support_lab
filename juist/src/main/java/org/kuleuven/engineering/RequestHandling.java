@@ -5,6 +5,11 @@ import java.util.List;
 
 import org.kuleuven.engineering.graph.Graph;
 import org.kuleuven.engineering.graph.GraphNode;
+import org.kuleuven.engineering.types.Location;
+import org.kuleuven.engineering.types.REQUEST_STATUS;
+import org.kuleuven.engineering.types.Request;
+import org.kuleuven.engineering.types.Stack;
+import org.kuleuven.engineering.types.Vehicle;
 
 public class RequestHandling {
     private boolean targetStackIsUsed;

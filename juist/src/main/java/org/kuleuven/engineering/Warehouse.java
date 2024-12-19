@@ -12,6 +12,12 @@ import org.kuleuven.engineering.scheduling.BufferToStackSchedulingStrategy;
 import org.kuleuven.engineering.scheduling.SchedulingStrategy;
 import org.kuleuven.engineering.scheduling.StackToBufferSchedulingStrategy;
 import org.kuleuven.engineering.scheduling.TopBoxSchedulingStrategy;
+import org.kuleuven.engineering.types.Location;
+import org.kuleuven.engineering.types.REQUEST_STATUS;
+import org.kuleuven.engineering.types.Request;
+import org.kuleuven.engineering.types.Stack;
+import org.kuleuven.engineering.types.Vehicle;
+
 
 public class Warehouse {
     private final Graph graph;

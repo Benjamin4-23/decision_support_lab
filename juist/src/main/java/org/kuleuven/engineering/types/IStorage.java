@@ -1,4 +1,4 @@
-package org.kuleuven.engineering;
+package org.kuleuven.engineering.types;
 
 public interface IStorage {
     int getID();

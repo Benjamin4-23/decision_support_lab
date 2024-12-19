@@ -1,12 +1,12 @@
 package org.kuleuven.engineering.graph;
 
-import org.kuleuven.engineering.Bufferpoint;
-import org.kuleuven.engineering.IStorage;
-import org.kuleuven.engineering.Location;
+import org.kuleuven.engineering.types.Bufferpoint;
+import org.kuleuven.engineering.types.IStorage;
+import org.kuleuven.engineering.types.Location;
 
 public class GraphNode {
-    private boolean isBuffer;
-    IStorage storage;
+    private final boolean isBuffer;
+    private final IStorage storage;
     private final Location location;
 
     public GraphNode(IStorage storage, Location location){

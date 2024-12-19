@@ -1,4 +1,4 @@
-package org.kuleuven.engineering;
+package org.kuleuven.engineering.types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,18 +9,18 @@ import org.kuleuven.engineering.graph.GraphNode;
 
 public class Vehicle {
     private final int ID;
-    private String name;
+    private final String name;
     private final int capacity;
     private Location location;
     private int currentRequestID = -1;
     public GraphNode currentNode = null;
     private List<Request> requests;
-    private List<Request> openRequests;
-    private List<Request> simulatedRequests;
-    private List<Request> openSimulatedRequests;
-    private List<Integer> myStackIDs;
-    double unavailableUntil = -1;
-    private ArrayList<String> carriedBoxes;
+    private final List<Request> openRequests;
+    private final List<Request> simulatedRequests;
+    private final List<Request> openSimulatedRequests;
+    private final List<Integer> myStackIDs;
+    private double unavailableUntil = -1;
+    private final ArrayList<String> carriedBoxes;
     private int carriedBoxesCount;
 
     public Vehicle(JSONObject object) {

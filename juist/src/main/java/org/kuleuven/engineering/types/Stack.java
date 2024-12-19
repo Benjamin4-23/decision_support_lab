@@ -1,6 +1,4 @@
-package org.kuleuven.engineering;
-
-import java.util.Objects;
+package org.kuleuven.engineering.types;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

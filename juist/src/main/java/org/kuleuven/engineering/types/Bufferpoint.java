@@ -1,9 +1,8 @@
-package org.kuleuven.engineering;
+package org.kuleuven.engineering.types;
+
+import java.util.Stack;
 
 import org.json.JSONObject;
-
-import java.util.List;
-import java.util.Stack;
 
 public class Bufferpoint implements IStorage {
     private int ID;

@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.kuleuven.engineering.Request;
 import org.kuleuven.engineering.RequestDistribution;
 import org.kuleuven.engineering.RequestHandling;
-import org.kuleuven.engineering.Stack;
-import org.kuleuven.engineering.Vehicle;
 import org.kuleuven.engineering.Warehouse;
+import org.kuleuven.engineering.types.Request;
+import org.kuleuven.engineering.types.Stack;
+import org.kuleuven.engineering.types.Vehicle;
 
 public class StackToBufferSchedulingStrategy extends SchedulingStrategy {
     private final RequestDistribution requestDistributor;

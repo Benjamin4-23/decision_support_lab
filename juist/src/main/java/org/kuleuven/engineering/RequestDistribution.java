@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.kuleuven.engineering.types.Request;
+import org.kuleuven.engineering.types.Stack;
+import org.kuleuven.engineering.types.Vehicle;
+
+
 public class RequestDistribution {
     private final List<Vehicle> vehicles;
     private final List<List<Request>> requestsPerVehicleList;

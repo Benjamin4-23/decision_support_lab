@@ -6,9 +6,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.kuleuven.engineering.Location;
-import org.kuleuven.engineering.Stack;
-import org.kuleuven.engineering.Vehicle;
+import org.kuleuven.engineering.types.Location;
+import org.kuleuven.engineering.types.Stack;
+import org.kuleuven.engineering.types.Vehicle;
 
 public class Graph {
     private final List<GraphNode> nodes;
