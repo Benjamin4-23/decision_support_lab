@@ -34,8 +34,8 @@ public class Warehouse {
         this.loadingSpeed = loadingSpeed;
         this.stackIsUsedUntil = new HashMap<>();
         for (GraphNode node : graph.getNodes()){
-            if (node.getStorage() instanceof Stack){
-                stackIsUsedUntil.put(((Stack) node.getStorage()).getID(), -1);
+            if (node.getStorage() instanceof Stack stack){
+                stackIsUsedUntil.put(stack.getID(), -1);
             }
         }
         firstGetAnother = new boolean[vehicles.size()];
@@ -466,60 +466,18 @@ public class Warehouse {
 
 
 
-
+    
     
     private boolean handleRequest(Vehicle vehicle, Request request, double time, int sameDestStackCount){
         Location startLocation = vehicle.getLocation();
         double timeAfterMove = time;
 
-        if (request.getStatus() == REQUEST_STATUS.INITIAL){
-            // if vehicle is not empty and at a stack, try to empty vehicle as much as possible
-            // check if vehicle got a needed box and is collecting more boxes
-            boolean result = leegVehicle(vehicle, startLocation, timeAfterMove, time, request);
-            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
-            // if dest is a stack and full, then relocate or check if multiple requests also go to the same stack, so much space is freed on dest stack, 
-            // then all those requests are finished
-            if (!result) {
-                result = maakPlaatsVrijOpDest(vehicle, startLocation, timeAfterMove, time, request);
-                if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
-            }
-            // go to src and PU
-            if (!result) {
-                PickupSrc(vehicle, startLocation, timeAfterMove, time, request);
-                if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
-            } 
-            return true;
-        }
-
-        if (request.getStatus() == REQUEST_STATUS.SRC){
-            // check if relocation is needed (we don't have the box on vehicle), if vehicle is full and not the correct box, go to temp stack
-            boolean result = boxesRelocatenNaarTempStack(vehicle, startLocation, timeAfterMove, timeAfterMove, request);
-            if (!resetNoAvailableTempStack(noAvailableTempStack)) return false;
-            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
-            
-            // if vehicle is not full and not the correct box, try to take 1 more
-            if (!result) result = NeemNogEenboxOpBijSrc(vehicle, startLocation, timeAfterMove, time, request);
-            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
-
-            // go to dest and PL
-            if (!result) placeBoxBijDest(vehicle, startLocation, timeAfterMove, time, request);
-            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
-            return true;
-        }
-
-        if (request.getStatus() == REQUEST_STATUS.DEST_PU){
-            // if vehicle is not full and sameDestStackCount > 0 and stack.freeSpace < sameDestStackCount+1, try to take 1 more
-            boolean result = neemNogBoxOpDest(vehicle, startLocation, timeAfterMove, time, request, sameDestStackCount);
-            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
-
-            // go to temp stack
-            if (!result) placeAtTempStackDest(vehicle, startLocation, timeAfterMove, time, request);
-            if (!resetNoAvailableTempStack(noAvailableTempStack)) return false;
-            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
-            return true;
-        }
-
-        return false;
+        return switch (request.getStatus()) {
+            case INITIAL -> handleIinitialStatus(vehicle, request, time, startLocation, timeAfterMove);
+            case SRC -> handleSrcStatus(vehicle, request, time, startLocation, timeAfterMove);
+            case DEST_PU -> handleDestPUStatus(vehicle, request, time, sameDestStackCount, startLocation, timeAfterMove);
+            default -> false;
+        };
     }
     
     private boolean checkAndResetTargetStackUsed(boolean condition) {
@@ -536,6 +494,54 @@ public class Warehouse {
         }
         return true;
     }
+    private boolean handleIinitialStatus(Vehicle vehicle, Request request, double time, Location startLocation, double timeAfterMove){
+        // if vehicle is not empty and at a stack, try to empty vehicle as much as possible
+        // check if vehicle got a needed box and is collecting more boxes
+        boolean result = leegVehicle(vehicle, startLocation, timeAfterMove, time, request);
+        if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+        // if dest is a stack and full, then relocate or check if multiple requests also go to the same stack, so much space is freed on dest stack, 
+        // then all those requests are finished
+        if (!result) {
+            result = maakPlaatsVrijOpDest(vehicle, startLocation, timeAfterMove, time, request);
+            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+        }
+        // go to src and PU
+        if (!result) {
+            PickupSrc(vehicle, startLocation, timeAfterMove, time, request);
+            if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+        } 
+        return true;
+    }
+    private boolean handleSrcStatus(Vehicle vehicle, Request request, double time, Location startLocation, double timeAfterMove){
+        // check if relocation is needed (we don't have the box on vehicle), if vehicle is full and not the correct box, go to temp stack
+        boolean result = boxesRelocatenNaarTempStack(vehicle, startLocation, timeAfterMove, timeAfterMove, request);
+        if (!resetNoAvailableTempStack(noAvailableTempStack)) return false;
+        if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+        
+        // if vehicle is not full and not the correct box, try to take 1 more
+        if (!result) result = NeemNogEenboxOpBijSrc(vehicle, startLocation, timeAfterMove, time, request);
+        if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+
+        // go to dest and PL
+        if (!result) placeBoxBijDest(vehicle, startLocation, timeAfterMove, time, request);
+        if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+        return true;
+    }
+    private boolean handleDestPUStatus(Vehicle vehicle, Request request, double time, int sameDestStackCount, Location startLocation, double timeAfterMove){
+        // if vehicle is not full and sameDestStackCount > 0 and stack.freeSpace < sameDestStackCount+1, try to take 1 more
+        boolean result = neemNogBoxOpDest(vehicle, startLocation, timeAfterMove, time, request, sameDestStackCount);
+        if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+
+        // go to temp stack
+        if (!result) placeAtTempStackDest(vehicle, startLocation, timeAfterMove, time, request);
+        if (!resetNoAvailableTempStack(noAvailableTempStack)) return false;
+        if (!checkAndResetTargetStackUsed(targetStackIsUsed)) return false;
+        return true;
+    }
+
+
+
+
 
 
 
