@@ -53,14 +53,14 @@
     {
       "ID": 0,
       "name": "Vehicle0",
-      "capacity": 3,
+      "capacity": 2,
       "xCoordinate": 100,
       "yCoordinate": 100
     },
     {
       "ID": 1,
       "name": "Vehicle1",
-      "capacity": 3,
+      "capacity": 2,
       "xCoordinate":110,
       "yCoordinate": 100
     }
@@ -69,32 +69,32 @@
     {
       "ID": 80,
       "pickupLocation": [
-      "BufferPoint"
-      ],
-      "placeLocation": [
       "stack0_1"
       ],
-      "boxID": "B80"
+      "placeLocation": [
+      "BufferPoint"
+      ],
+      "boxID": "B9"
     },
     {
       "ID": 81,
       "pickupLocation": [
-      "BufferPoint"
-      ],
-      "placeLocation": [
       "stack0_1"
       ],
-      "boxID": "B81"
+      "placeLocation": [
+      "BufferPoint"
+      ],
+      "boxID": "B8"
     },
     {
       "ID": 82,
       "pickupLocation": [
-      "BufferPoint2"
-      ],
-      "placeLocation": [
       "stack0_1"
       ],
-      "boxID": "B82"
+      "placeLocation": [
+      "BufferPoint"
+      ],
+      "boxID": "B7"
     }
     
   ]
